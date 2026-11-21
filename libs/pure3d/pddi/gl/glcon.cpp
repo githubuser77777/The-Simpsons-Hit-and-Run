@@ -78,6 +78,7 @@ pglContext::pglContext(pglDevice* dev, pglDisplay* disp) : pddiBaseContext((pddi
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTexSize);
     DefaultState();
     contextID = 0;
+    m_SwapInterval = -1;
 
     extContext = new pglExtContext(display);
     extGamma = new pglExtGamma(display);
@@ -103,7 +104,16 @@ void pglContext::BeginFrame()
 {
     pddiBaseContext::BeginFrame();
 
+#ifdef __SWITCH2__
+    const int swapInterval = display->GetForceVSync() ? 1 : 0;
+    if( swapInterval != m_SwapInterval )
+    {
+        SDL_GL_SetSwapInterval( swapInterval );
+        m_SwapInterval = swapInterval;
+    }
+#else
     SDL_GL_SetSwapInterval(display->GetForceVSync() ? 1 : 0);
+#endif
 
     if(display->HasReset())
     {

@@ -457,6 +457,10 @@ void Game::Run()
 {
     extern bool g_AllowDebugOutput;
     
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 startup: Game::Run entered" );
+#endif
+
 #ifdef DEMO_MODE_PROFILER
     g_AllowDebugOutput = false;
     g_DemoProfiler.AddChannel(0, "All");
@@ -487,8 +491,28 @@ void Game::Run()
 #endif
 
     unsigned time = radTimeGetMilliseconds();
+#if defined(SRR2_STARTUP_DIAGNOSTICS) && defined(SRR2_FRAME_TIMING_DIAGNOSTICS)
+    unsigned timingFrames = 0;
+    unsigned timingSlowFrames = 0;
+    unsigned timingVerySlowFrames = 0;
+    unsigned maxFrameTime = 0;
+    unsigned maxGameFlowTime = 0;
+    unsigned maxRenderFlowTime = 0;
+    unsigned maxFileServiceTime = 0;
+    unsigned maxSoundUpdateTime = 0;
+    unsigned maxLoadTaskTime = 0;
+#endif
     while( !mExitNow )
     {
+#if defined(SRR2_STARTUP_DIAGNOSTICS) && defined(SRR2_FRAME_TIMING_DIAGNOSTICS)
+        const unsigned frameStartTime = radTimeGetMicroseconds();
+#endif
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        if( mFrameCount < 12 || mFrameCount % 60 == 0 )
+        {
+            SDL_Log( "SRR2 startup: frame %u started", mFrameCount );
+        }
+#endif
         DEMOPROFILE( g_DemoProfiler.Start(PROFILE_CHANNEL_ALL); )
 
         BEGIN_PROFILER_FRAME();
@@ -539,14 +563,80 @@ void Game::Run()
         if ( !mpPlatform->PausedForErrors() )
         {
             DEMOPROFILE( g_DemoProfiler.Start(PROFILE_CHANNEL_AI); )
+#if defined(SRR2_STARTUP_DIAGNOSTICS) && defined(SRR2_FRAME_TIMING_DIAGNOSTICS)
+            const unsigned gameFlowStartTime = radTimeGetMicroseconds();
+#endif
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+            if( mFrameCount < 12 )
+            {
+                SDL_Log( "SRR2 startup: frame %u servicing timers", mFrameCount );
+            }
+#endif
             mpTimerList->Service(); //nv
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+            if( mFrameCount < 12 )
+            {
+                SDL_Log( "SRR2 startup: frame %u updating GameFlow", mFrameCount );
+            }
+            if( mFrameCount % 60 == 0 )
+            {
+                SDL_Log( "SRR2 startup: frame %u GameFlow update starting", mFrameCount );
+            }
+#endif
             mpGameFlow->OnTimerDone(elapsed, NULL);
+#if defined(SRR2_STARTUP_DIAGNOSTICS) && defined(SRR2_FRAME_TIMING_DIAGNOSTICS)
+            const unsigned gameFlowTime = radTimeGetMicroseconds() - gameFlowStartTime;
+            if( gameFlowTime > maxGameFlowTime )
+            {
+                maxGameFlowTime = gameFlowTime;
+            }
+#endif
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+            if( mFrameCount < 12 )
+            {
+                SDL_Log( "SRR2 startup: frame %u GameFlow updated", mFrameCount );
+            }
+            if( mFrameCount % 60 == 0 )
+            {
+                SDL_Log( "SRR2 startup: frame %u GameFlow update completed", mFrameCount );
+            }
+#endif
             DEMOPROFILE( g_DemoProfiler.Stop(PROFILE_CHANNEL_AI); )
 
             if( !mExitNow )
             {
                 DEMOPROFILE( g_DemoProfiler.Start(PROFILE_CHANNEL_RENDER); )
+#if defined(SRR2_STARTUP_DIAGNOSTICS) && defined(SRR2_FRAME_TIMING_DIAGNOSTICS)
+                const unsigned renderFlowStartTime = radTimeGetMicroseconds();
+#endif
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+                if( mFrameCount < 12 )
+                {
+                    SDL_Log( "SRR2 startup: frame %u updating RenderFlow", mFrameCount );
+                }
+                if( mFrameCount % 60 == 0 )
+                {
+                    SDL_Log( "SRR2 startup: frame %u RenderFlow update starting", mFrameCount );
+                }
+#endif
                 mpRenderFlow->OnTimerDone(elapsed, NULL);
+#if defined(SRR2_STARTUP_DIAGNOSTICS) && defined(SRR2_FRAME_TIMING_DIAGNOSTICS)
+                const unsigned renderFlowTime = radTimeGetMicroseconds() - renderFlowStartTime;
+                if( renderFlowTime > maxRenderFlowTime )
+                {
+                    maxRenderFlowTime = renderFlowTime;
+                }
+#endif
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+                if( mFrameCount < 12 )
+                {
+                    SDL_Log( "SRR2 startup: frame %u RenderFlow updated", mFrameCount );
+                }
+                if( mFrameCount % 60 == 0 )
+                {
+                    SDL_Log( "SRR2 startup: frame %u RenderFlow update completed", mFrameCount );
+                }
+#endif
                 DEMOPROFILE( g_DemoProfiler.Stop(PROFILE_CHANNEL_RENDER); )
             }
         }
@@ -567,9 +657,35 @@ void Game::Run()
         //
         // Service FTech subsystems.
         //
+#if defined(SRR2_STARTUP_DIAGNOSTICS) && defined(SRR2_FRAME_TIMING_DIAGNOSTICS)
+        const unsigned fileServiceStartTime = radTimeGetMicroseconds();
+#endif
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        if( mFrameCount < 12 )
+        {
+            SDL_Log( "SRR2 startup: frame %u servicing files and debug", mFrameCount );
+        }
+        if( mFrameCount % 60 == 0 )
+        {
+            SDL_Log( "SRR2 startup: frame %u file service starting", mFrameCount );
+        }
+#endif
         ::radFileService();
         ::radDbgComService();
         ::radDebugConsoleService();
+#if defined(SRR2_STARTUP_DIAGNOSTICS) && defined(SRR2_FRAME_TIMING_DIAGNOSTICS)
+        const unsigned fileServiceTime = radTimeGetMicroseconds() - fileServiceStartTime;
+        if( fileServiceTime > maxFileServiceTime )
+        {
+            maxFileServiceTime = fileServiceTime;
+        }
+#endif
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        if( mFrameCount % 60 == 0 )
+        {
+            SDL_Log( "SRR2 startup: frame %u file service completed", mFrameCount );
+        }
+#endif
         
         if( CommandLineOptions::Get( CLO_MEMORY_MONITOR) )
         {
@@ -579,7 +695,33 @@ void Game::Run()
         //
         // Service the sound renderer.
         //
+#if defined(SRR2_STARTUP_DIAGNOSTICS) && defined(SRR2_FRAME_TIMING_DIAGNOSTICS)
+        const unsigned soundUpdateStartTime = radTimeGetMicroseconds();
+#endif
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        if( mFrameCount < 12 )
+        {
+            SDL_Log( "SRR2 startup: frame %u updating sound", mFrameCount );
+        }
+        if( mFrameCount % 60 == 0 )
+        {
+            SDL_Log( "SRR2 startup: frame %u sound update starting", mFrameCount );
+        }
+#endif
         SoundManager::GetInstance()->Update();
+#if defined(SRR2_STARTUP_DIAGNOSTICS) && defined(SRR2_FRAME_TIMING_DIAGNOSTICS)
+        const unsigned soundUpdateTime = radTimeGetMicroseconds() - soundUpdateStartTime;
+        if( soundUpdateTime > maxSoundUpdateTime )
+        {
+            maxSoundUpdateTime = soundUpdateTime;
+        }
+#endif
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        if( mFrameCount % 60 == 0 )
+        {
+            SDL_Log( "SRR2 startup: frame %u sound update completed", mFrameCount );
+        }
+#endif
 
         if ( mpPlatform->PausedForErrors() )
         {
@@ -594,10 +736,71 @@ void Game::Run()
         //
         // Spin Pure3D async loading.
         //
+#if defined(SRR2_STARTUP_DIAGNOSTICS) && defined(SRR2_FRAME_TIMING_DIAGNOSTICS)
+        const unsigned loadTaskStartTime = radTimeGetMicroseconds();
+#endif
         DEMOPROFILE( g_DemoProfiler.Start(PROFILE_CHANNEL_LOAD); )
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        if( mFrameCount < 12 )
+        {
+            SDL_Log( "SRR2 startup: frame %u switching load task", mFrameCount );
+        }
+        if( mFrameCount % 60 == 0 )
+        {
+            SDL_Log( "SRR2 startup: frame %u load task starting", mFrameCount );
+        }
+#endif
         p3d::loadManager->SwitchTask();
+#if defined(SRR2_STARTUP_DIAGNOSTICS) && defined(SRR2_FRAME_TIMING_DIAGNOSTICS)
+        const unsigned loadTaskTime = radTimeGetMicroseconds() - loadTaskStartTime;
+        if( loadTaskTime > maxLoadTaskTime )
+        {
+            maxLoadTaskTime = loadTaskTime;
+        }
+#endif
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        if( mFrameCount < 12 )
+        {
+            SDL_Log( "SRR2 startup: frame %u load task completed", mFrameCount );
+        }
+        if( mFrameCount % 60 == 0 )
+        {
+            SDL_Log( "SRR2 startup: frame %u load task completed", mFrameCount );
+        }
+#endif
         DEMOPROFILE( g_DemoProfiler.Stop(PROFILE_CHANNEL_LOAD); )
 
+#if defined(SRR2_STARTUP_DIAGNOSTICS) && defined(SRR2_FRAME_TIMING_DIAGNOSTICS)
+        const unsigned frameTime = radTimeGetMicroseconds() - frameStartTime;
+        if( frameTime > maxFrameTime )
+        {
+            maxFrameTime = frameTime;
+        }
+        if( frameTime > 20000 )
+        {
+            ++timingSlowFrames;
+        }
+        if( frameTime > 33333 )
+        {
+            ++timingVerySlowFrames;
+        }
+        if( ++timingFrames == 120 )
+        {
+            SDL_Log( "SRR2 perf: frames=%u >20ms=%u >33ms=%u max_us frame=%u flow=%u render=%u files=%u sound=%u load=%u",
+                     timingFrames, timingSlowFrames, timingVerySlowFrames, maxFrameTime,
+                     maxGameFlowTime, maxRenderFlowTime, maxFileServiceTime,
+                     maxSoundUpdateTime, maxLoadTaskTime );
+            timingFrames = 0;
+            timingSlowFrames = 0;
+            timingVerySlowFrames = 0;
+            maxFrameTime = 0;
+            maxGameFlowTime = 0;
+            maxRenderFlowTime = 0;
+            maxFileServiceTime = 0;
+            maxSoundUpdateTime = 0;
+            maxLoadTaskTime = 0;
+        }
+#endif
         ++mFrameCount;
 
         DEMOPROFILE( g_DemoProfiler.Stop(PROFILE_CHANNEL_ALL); )

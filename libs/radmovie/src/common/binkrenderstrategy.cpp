@@ -175,8 +175,8 @@ void radMovieRenderStrategyBink::ChangeParameters( unsigned int width, unsigned 
 
         // How many tiles will this movie require?
 
-        unsigned int horizontalTiles = ( width / RMV_TEXTURE_MAX_TEX_DIM ) + 1;
-        unsigned int verticalTiles = ( height / RMV_TEXTURE_MAX_TEX_DIM ) + 1;
+        unsigned int horizontalTiles = ( ( width - 1 ) / RMV_TEXTURE_MAX_TEX_DIM ) + 1;
+        unsigned int verticalTiles = ( ( height - 1 ) / RMV_TEXTURE_MAX_TEX_DIM ) + 1;
         m_NumTiles = horizontalTiles * verticalTiles;
         rAssert( m_NumTiles <= RMV_MAX_NUM_TILES );
 

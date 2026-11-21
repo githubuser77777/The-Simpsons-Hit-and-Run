@@ -22,6 +22,9 @@
 #include <raddebug.hpp>
 #include <p3d/utility.hpp>
 #include <p3d/loadmanager.hpp>
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+#include <SDL.h>
+#endif
 #include "FeLoaders.h"
 #include <FeTextBible.h>
 #include <string.h>
@@ -583,6 +586,9 @@ bool FeApp::IsSafeToRender()
 //===========================================================================
 void FeApp::LoadProject( const char* path, Scrooby::LoadProjectCallback* pCallback, char* inventorySection, radMemoryAllocator allocator )
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 scrooby: FeApp::LoadProject entered %s", path );
+#endif
     rAssert( path );
     radMemoryAllocator old = ::radMemorySetCurrentAllocator( RADMEMORY_ALLOC_TEMP );
         PascalCString filePath( path );
@@ -627,8 +633,17 @@ void FeApp::LoadProject( const char* path, Scrooby::LoadProjectCallback* pCallba
     old = ::radMemorySetCurrentAllocator( RADMEMORY_ALLOC_TEMP );
         PascalCString fullFileName = filePath.FullFilename();
         m_ResourceManager->AddResource( filePath, NULL, RT_PROJECT, fullFileName );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 scrooby: project resource registered %s", path );
+#endif
     ::radMemorySetCurrentAllocator( old );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 scrooby: starting resource loading for %s", path );
+#endif
     m_ResourceManager->ContinueLoading();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 scrooby: resource loading call returned for %s", path );
+#endif
 }
 
 //===========================================================================
@@ -701,6 +716,9 @@ void FeApp::MarkUnsafeToRender()
 //===========================================================================
 void FeApp::OnProjectLoadComplete( Scrooby::Project* pProject )
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 scrooby: FeApp::OnProjectLoadComplete entered" );
+#endif
     Scrooby::LoadProjectCallback* tempCallback;
 
     rAssert( pProject );
@@ -730,6 +748,9 @@ void FeApp::OnProjectLoadComplete( Scrooby::Project* pProject )
     {
         tempCallback->OnProjectLoadComplete( pProject );
     }
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 scrooby: FeApp project callback returned" );
+#endif
 }
 
 //===========================================================================

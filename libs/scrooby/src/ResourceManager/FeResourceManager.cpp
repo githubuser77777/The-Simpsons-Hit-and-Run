@@ -30,6 +30,9 @@
 #include <radmemory.hpp>
 #include <radload/utility/object.hpp>
 #include <p3d/inventory.hpp>
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+#include <SDL.h>
+#endif
 
 // TC: This is a quick hack for implementing the Simpsons2 FE holidays
 //     theme.  At this point in the project, it's the easiest thing to
@@ -350,6 +353,10 @@ int FeResourceManager::AddPure3dAttributes( const char* camera, const char* anim
 //===========================================================================
 void FeResourceManager::ContinueLoading()
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 scrooby: FeResourceManager::ContinueLoading entered resources=%d",
+             mResources.Size() );
+#endif
     //
     // Cycle through the list of files, and load those that are appropriate
     //
@@ -501,7 +508,14 @@ void FeResourceManager::ContinueLoading()
                             ::radMemorySetCurrentAllocator( old );
                         }
 
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+                        SDL_Log( "SRR2 scrooby: queuing P3D resource %s type=%d",
+                                 name, mResources[i]->m_type );
+#endif
                         p3d::context->GetLoadManager()->Load( request );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+                        SDL_Log( "SRR2 scrooby: P3D Load request returned for %s", name );
+#endif
                     }
 
                     // We don't want to let any other files get queued up until this one is done
@@ -516,6 +530,9 @@ void FeResourceManager::ContinueLoading()
     }
 
     ::radMemorySetCurrentAllocator( old );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 scrooby: FeResourceManager::ContinueLoading returned" );
+#endif
 }
 
 //===========================================================================

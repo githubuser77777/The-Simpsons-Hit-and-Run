@@ -36,6 +36,9 @@
 
 #include <raddebug.hpp> // Foundation
 #include <radmovie2.hpp>
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+#include <SDL.h>
+#endif
 
 #include <sound/soundmanager.h>
 
@@ -297,6 +300,11 @@ void CGuiScreenPlayMovie::OnPresentationEventLoadComplete( PresentationEvent* pE
 //=============================================================================
 void CGuiScreenPlayMovie::OnPresentationEventEnd( PresentationEvent* pEvent )
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 movie: frontend movie end callback file=%s screen=%d queueEmpty=%d",
+             pEvent != NULL ? pEvent->fileName : "none", m_ID,
+             GetPresentationManager()->IsQueueEmpty() );
+#endif
     if( GetPresentationManager()->IsQueueEmpty() )
     {
         GetSoundManager()->ResumeAfterMovie();
@@ -331,6 +339,9 @@ void CGuiScreenPlayMovie::OnPresentationEventEnd( PresentationEvent* pEvent )
             m_pParent->HandleMessage( GUI_MSG_BACK_SCREEN );
         }
     }
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 movie: frontend movie end callback returned" );
+#endif
 }
 
 

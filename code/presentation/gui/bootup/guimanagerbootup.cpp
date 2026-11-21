@@ -35,6 +35,9 @@
 #endif
 
 #include <raddebug.hpp>
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+#include <SDL.h>
+#endif
 
 //===========================================================================
 // Global Data, Local Data, Local Classes
@@ -279,6 +282,9 @@ void CGuiManagerBootUp::HandleMessage
     {
         case GUI_MSG_QUIT_BOOTUP:
         {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+            SDL_Log( "SRR2 startup: GUI manager handling quit-bootup" );
+#endif
             rAssert( GUI_FE_SCREEN_RUNNING == m_state );
 
             rAssertMsg( m_bootupScreenQueue.empty(),
@@ -293,6 +299,9 @@ void CGuiManagerBootUp::HandleMessage
             // Tell the current screen to shut down.
             //
             this->FindWindowByID( m_currentScreen )->HandleMessage( GUI_MSG_WINDOW_EXIT );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+            SDL_Log( "SRR2 startup: bootup screen exit requested" );
+#endif
 
             break;
         }
@@ -311,6 +320,9 @@ void CGuiManagerBootUp::HandleMessage
 
                 // start intro movies
                 //
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+                SDL_Log( "SRR2 startup: bootup screen finished; starting movies or frontend" );
+#endif
                 GetBootupContext()->StartMovies();
             }
 

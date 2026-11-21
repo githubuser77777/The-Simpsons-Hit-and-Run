@@ -31,6 +31,9 @@
 #ifdef RAD_MOVIEPLAYER_USE_BINK
 // Some pc video cards have max texture size so limit all texture dimensions to this
 #define RMV_TEXTURE_MAX_TEX_DIM 256
+#elif defined RAD_WIN32 && defined RAD_CONSOLE
+// The Switch console build renders 720p FMVs through the single-tile FFmpeg path.
+#define RMV_TEXTURE_MAX_TEX_DIM 2048
 #else
 #define RMV_TEXTURE_MAX_TEX_DIM 1024 // somewhat arbitrary, just needs to be big
 #endif // RAD_XBOX

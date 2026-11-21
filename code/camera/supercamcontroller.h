@@ -147,6 +147,12 @@ inline void SuperCamController::OnButtonUp( int controllerId, int buttonId, cons
 //=============================================================================
 inline float SuperCamController::GetAxisValue( unsigned int buttonId ) const
 {
+#ifdef SRR2_SWITCH_PORT
+    if( buttonId == stickX )
+    {
+        return -GetValue( buttonId );
+    }
+#endif
 #ifdef RAD_PC
     switch( buttonId )
     {

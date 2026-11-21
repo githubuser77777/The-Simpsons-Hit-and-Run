@@ -14,6 +14,9 @@
 //========================================
 // Foundation Tech
 #include <raddebug.hpp>
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+#include <SDL.h>
+#endif
 
 //========================================
 // Project Includes
@@ -115,11 +118,17 @@ LoadingGameplayContext::~LoadingGameplayContext()
 //=============================================================================
 void LoadingGameplayContext::OnStart( ContextEnum previousContext )
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 loading: LoadingGameplayContext::OnStart entered previous=%d", previousContext );
+#endif
     GetGameplayManager()->mIsDemo = false;
 
     // Common to all loading contexts.
     //
     LoadingContext::OnStart( previousContext );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 loading: LoadingContext::OnStart returned" );
+#endif
 
 /*****************************************************************************
  *	Start inserting stuff below ...
@@ -136,8 +145,14 @@ void LoadingGameplayContext::OnStart( ContextEnum previousContext )
     // initialize GUI in-game mode (and load resources)
     //
     GetGuiSystem()->HandleMessage( GUI_MSG_INIT_INGAME );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 loading: in-game GUI initialization returned" );
+#endif
 
     GetLoadingManager()->AddCallback( this );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 loading: loading-manager callback registered; OnStart returned" );
+#endif
 }
 
 //=============================================================================
@@ -169,11 +184,32 @@ void LoadingGameplayContext::OnStop( ContextEnum nextContext )
 //=============================================================================
 void LoadingGameplayContext::OnUpdate( unsigned int elapsedTime )
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    static unsigned int updateCount = 0;
+    const bool logUpdate = ( updateCount % 60 ) == 0;
+    if( logUpdate )
+    {
+        SDL_Log( "SRR2 loading: OnUpdate %u starting gameplay-manager update", updateCount );
+    }
+#endif
     GetGameplayManager()->Update( elapsedTime );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    if( logUpdate )
+    {
+        SDL_Log( "SRR2 loading: OnUpdate %u gameplay-manager update returned", updateCount );
+    }
+#endif
 
     // Common to all loading contexts.
     //
     LoadingContext::OnUpdate( elapsedTime );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    if( logUpdate )
+    {
+        SDL_Log( "SRR2 loading: OnUpdate %u GUI update returned", updateCount );
+    }
+    ++updateCount;
+#endif
 }
 
 //=============================================================================
@@ -237,14 +273,26 @@ void LoadingGameplayContext::PrepareNewHeaps()
 //=============================================================================
 void LoadingGameplayContext::OnProcessRequestsComplete( void* pUserData )
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 loading: gameplay resource requests completed" );
+#endif
     GetGameplayManager()->LevelLoaded();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 loading: GameplayManager::LevelLoaded returned" );
+#endif
 
     //
     // Queue the loading for level sounds
     //
     GetSoundManager()->QueueLevelSoundLoads();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 loading: level sound loads queued" );
+#endif
 
     // Common to all loading contexts.
     //
     LoadingContext::OnProcessRequestsComplete( pUserData );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 loading: base loading completion returned" );
+#endif
 }

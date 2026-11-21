@@ -2123,6 +2123,10 @@ void SuperCamCentral::LoadData( const GameDataByte* dataBuffer, unsigned int num
 
     mJumpCamsEnabled =          ( (bitmask & 0x01) > 0 );
     mIsInvertedCameraEnabled =  ( (bitmask & 0x02) > 0 );
+#ifdef SRR2_SWITCH_PORT
+    // The Switch PC-assets UI has no invert-camera setting.
+    mIsInvertedCameraEnabled = false;
+#endif
 
     GameDataByte preferredFollowCam = (bitmask >> 2);
     if( preferredFollowCam == 0 )

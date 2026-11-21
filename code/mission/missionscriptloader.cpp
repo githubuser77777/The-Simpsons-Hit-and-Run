@@ -17,6 +17,9 @@
 #include <math.h>
 #include <string.h>
 #include <radtextdisplay.hpp>
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+#include <SDL.h>
+#endif
 
 //========================================
 // Project Includes
@@ -648,14 +651,24 @@ void MissionScriptLoader::LoadScript( char* filename )
 void MissionScriptLoader::LoadScriptAsync( char* filename, LoadingManager::ProcessRequestsCallback* callback )
 {
     mFirstObjective = true;
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 mission load: MissionScriptLoader executing %s", filename );
+#endif
     HeapMgr()->PushHeap (GMA_LEVEL_MISSION);
     GetConsole()->ExecuteScript( filename, this, callback );
     HeapMgr()->PopHeap(GMA_LEVEL_MISSION);
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 mission load: ExecuteScript returned for %s", filename );
+#endif
 }
 
 
 void MissionScriptLoader::OnExecuteScriptComplete( void* pUserData )
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 mission load: OnExecuteScriptComplete callback=%s",
+             pUserData != NULL ? "present" : "none" );
+#endif
     if ( pUserData != NULL )
     {
         LoadingManager::ProcessRequestsCallback* callback = static_cast<LoadingManager::ProcessRequestsCallback*>(pUserData);

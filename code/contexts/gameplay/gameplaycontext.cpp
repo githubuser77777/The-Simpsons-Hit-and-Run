@@ -14,6 +14,9 @@
 //========================================
 // Foundation Tech
 #include <raddebug.hpp>
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+#include <SDL.h>
+#endif
 #include <radtime.hpp>
 #include <raddebugwatch.hpp>
 
@@ -196,9 +199,15 @@ GameplayContext::~GameplayContext()
 //=============================================================================
 void GameplayContext::OnStart( ContextEnum previousContext )
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 gameplay: GameplayContext::OnStart entered previous=%d", previousContext );
+#endif
     // Common to all playing contexts.
     //
     PlayingContext::OnStart( previousContext );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 gameplay: PlayingContext::OnStart returned" );
+#endif
 
     MEMTRACK_PUSH_FLAG( "Gameplay" );
     // do gameplay initializations only if previous context was loading context
@@ -390,6 +399,9 @@ void GameplayContext::OnStart( ContextEnum previousContext )
     }
     GetGameplayManager()->Update( 0 );
     GetTriggerVolumeTracker()->Update( 0 );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 gameplay: GameplayContext::OnStart completed" );
+#endif
 }
 
 //=============================================================================

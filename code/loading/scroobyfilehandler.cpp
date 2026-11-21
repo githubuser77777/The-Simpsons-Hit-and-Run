@@ -16,6 +16,9 @@
 #include <raddebug.hpp>
 #include <radtime.hpp>
 #include <string.h>
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+#include <SDL.h>
+#endif
 
 //========================================
 // Project Includes
@@ -98,7 +101,13 @@ void ScroobyFileHandler::LoadFile
     HeapMgr()->PushHeap (GMA_PERSISTENT);
 
     // load scrooby project
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 scrooby: LoadFile entered %s", filename );
+#endif
     Scrooby::App::GetInstance()->LoadProject( filename, this, mcSectionName, heap );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 scrooby: LoadProject returned for %s", filename );
+#endif
 
     HeapMgr()->PopHeap (GMA_PERSISTENT);
 }
@@ -118,15 +127,27 @@ void ScroobyFileHandler::LoadFile
 //==============================================================================
 void ScroobyFileHandler::OnProjectLoadComplete( Scrooby::Project* pProject )
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 scrooby: OnProjectLoadComplete entered" );
+#endif
     rAssert( mpCallback );
 
     // notify GUI system that the project is loaded
     //
     GetGuiSystem()->OnProjectLoadComplete( pProject );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 scrooby: GUI project notification returned" );
+#endif
     GetGuiSystem()->HandleMessage( GUI_MSG_PROJECT_LOAD_COMPLETE );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 scrooby: GUI load-complete message returned" );
+#endif
 
     // notify client that async loading is completed
     mpCallback->OnLoadFileComplete( mpUserData );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 scrooby: client file callback returned" );
+#endif
 }
 
 

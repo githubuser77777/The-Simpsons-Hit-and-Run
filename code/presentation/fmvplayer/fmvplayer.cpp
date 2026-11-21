@@ -14,6 +14,9 @@
 //========================================
 // Foundation Tech
 #include <raddebug.hpp>
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+#include <SDL.h>
+#endif
 
 #include <radplatform.hpp>
 #include <radsound.hpp>
@@ -131,6 +134,9 @@ FMVPlayer::~FMVPlayer()
 //=============================================================================
 void FMVPlayer::LoadData( const char* fileName, bool bInInventory, void* pUserData ) 
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 movie: FMVPlayer::LoadData entered file=%s", fileName );
+#endif
     if( GetState() == ANIM_IDLE || GetState() == ANIM_LOADING )
     {
         GetSoundManager()->StopForMovie();
@@ -163,11 +169,23 @@ void FMVPlayer::LoadData( const char* fileName, bool bInInventory, void* pUserDa
             }
         }
         HeapMgr()->PushHeap( allocator );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 movie: initializing decoder for %s", fileName );
+#endif
         Initialize( allocator );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 movie: decoder initialized; calling Load for %s", fileName );
+#endif
         m_refIRadMoviePlayer->Load( fileName, audioIndex );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 movie: Load returned state=%d for %s", m_refIRadMoviePlayer->GetState(), fileName );
+#endif
 		mDriveFinished = false;
         Game::GetInstance()->GetPlatform()->GetHostDrive()->AddCompletionCallback( this, 0 );
 
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 movie: waiting for host-drive completion for %s", fileName );
+#endif
         while( !mDriveFinished )
         {
     		::radMovieService2( );
@@ -175,8 +193,14 @@ void FMVPlayer::LoadData( const char* fileName, bool bInInventory, void* pUserDa
             SoundManager::GetInstance()->Update();
             SoundManager::GetInstance()->UpdateOncePerFrame( 0, NUM_CONTEXTS, false );
         }
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 movie: host-drive completion returned for %s", fileName );
+#endif
         HeapMgr()->PopHeap(allocator);
         SetState( ANIM_LOADED );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 movie: FMVPlayer::LoadData completed for %s", fileName );
+#endif
     }
 }
 
@@ -194,9 +218,18 @@ void FMVPlayer::Play()
 {
     if(( GetState() == ANIM_LOADED ) && ( m_refIRadMoviePlayer != NULL ))
     {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 movie: FMVPlayer::Play entered" );
+#endif
         AnimationPlayer::Play();
 		FadeScreen(0.0f);
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 movie: swapping before movie playback" );
+#endif
 		p3d::context->SwapBuffers();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 movie: pre-play swap returned" );
+#endif
 		p3d::display->SetForceVSync(true);
 #ifdef FINAL
 		m_UserInputHandler->SetEnabled(GetSkippable());
@@ -216,7 +249,13 @@ void FMVPlayer::Play()
 		}
 
 		m_refIRadMoviePlayer->SetVolume(mMovieVolume);
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 movie: calling decoder Play" );
+#endif
         m_refIRadMoviePlayer->Play( ); 
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 movie: decoder Play returned" );
+#endif
     }
 }
 
@@ -411,7 +450,20 @@ void FMVPlayer::IterateLoop( IRadMoviePlayer2* pIRadMoviePlayer )
 {
     rAssert( pIRadMoviePlayer != NULL );
 
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    static bool loggedFirstIterateLoop = false;
+    if( !loggedFirstIterateLoop )
+    {
+        SDL_Log( "SRR2 movie: FMVPlayer::IterateLoop entered" );
+    }
+#endif
     pIRadMoviePlayer->Render();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    if( !loggedFirstIterateLoop )
+    {
+        SDL_Log( "SRR2 movie: decoder Render returned" );
+    }
+#endif
 	if(mFadeOut > 0.0f )
 	{
 		pIRadMoviePlayer->SetVolume(mMovieVolume * mFadeOut);
@@ -419,6 +471,13 @@ void FMVPlayer::IterateLoop( IRadMoviePlayer2* pIRadMoviePlayer )
 	}
 	float deltaTime = mElapsedTime;
     mElapsedTime = pIRadMoviePlayer->GetCurrentFrameNumber() / pIRadMoviePlayer->GetFrameRate();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    if( !loggedFirstIterateLoop )
+    {
+        SDL_Log( "SRR2 movie: IterateLoop updated elapsed time to %.3f", mElapsedTime );
+        loggedFirstIterateLoop = true;
+    }
+#endif
 	if(mFadeOut > 0.0f )
 	{
 		deltaTime = mElapsedTime - deltaTime;
@@ -439,6 +498,10 @@ void FMVPlayer::IterateLoop( IRadMoviePlayer2* pIRadMoviePlayer )
 //=============================================================================
 void FMVPlayer::ClearData()
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 movie: FMVPlayer::ClearData entered player=%s",
+             m_refIRadMoviePlayer != NULL ? "present" : "null" );
+#endif
     //
     // Free up the radmovie movie player stuff
     //
@@ -447,9 +510,18 @@ void FMVPlayer::ClearData()
         // I think there is a case where the movie player doesn't shut down properly because the
         //decode buffer is still in use as a texture in the draw pipeline, preventing it from being
         //freed.
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 movie: waiting for movie draw sync" );
+#endif
         p3d::pddi->DrawSync();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 movie: movie draw sync returned; unloading decoder" );
+#endif
         m_refIRadMoviePlayer->Unload( );
         m_refIRadMoviePlayer = NULL;
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 movie: decoder unload returned" );
+#endif
 
 		mDriveFinished = false;
         Game::GetInstance()->GetPlatform()->GetHostDrive()->AddCompletionCallback( this, 0 );
@@ -461,13 +533,22 @@ void FMVPlayer::ClearData()
             SoundManager::GetInstance()->Update();
             SoundManager::GetInstance()->UpdateOncePerFrame( 0, NUM_CONTEXTS, false );
         }
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 movie: ClearData host-drive wait returned" );
+#endif
     }
 
     AnimationPlayer::ClearData();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 movie: FMVPlayer::ClearData completed" );
+#endif
 }
 
 void FMVPlayer::OnDriveOperationsComplete( void* pUserData )
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 movie: host-drive completion callback" );
+#endif
     mDriveFinished = true;
 }
 

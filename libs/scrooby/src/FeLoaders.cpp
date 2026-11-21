@@ -15,6 +15,9 @@
 #include <constants/chunkids.hpp>
 #include <p3d/chunkfile.hpp>
 #include <p3d/utility.hpp>
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+#include <SDL.h>
+#endif
 #include "FeLoaders.h"
 #include <string.h>
 
@@ -142,12 +145,19 @@ bool FeProjectFileHandler::CheckExtension( char* filename )
 //=============================================================================
 tLoadStatus FeProjectFileHandler::Load( tFile* file, tEntityStore* store )
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 scrooby: FeProjectFileHandler::Load entered file=%s size=%u",
+             file->GetFullFilename(), file->GetSize() );
+#endif
     char* dataBuffer = new char[file->GetSize()];
 
     //Scrooby::Log::Message( Scrooby::LVL_DEBUG, "Loading XML File : %s", file->GetFullFilename() );
 
     // This call will pretty much kill any hope of asynchronous parsing
     file->GetData( dataBuffer, file->GetSize() );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 scrooby: project file data copied file=%s", file->GetFullFilename() );
+#endif
 
     XMLTree* tree = new XMLTree();
     FeEntity* rValue = NULL;
@@ -190,6 +200,10 @@ tLoadStatus FeProjectFileHandler::Load( tFile* file, tEntityStore* store )
     else
     {
     }
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 scrooby: project parse returned file=%s entity=%s",
+             file->GetFullFilename(), rValue != NULL ? "present" : "missing" );
+#endif
     
     // Clean up the objects before we decide whether to return or not.
     delete tree;
