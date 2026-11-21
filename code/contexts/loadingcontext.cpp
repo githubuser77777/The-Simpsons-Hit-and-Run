@@ -13,6 +13,9 @@
 // System Includes
 //========================================
 #include <p3d/shadow.hpp>
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+#include <SDL.h>
+#endif
 
 //========================================
 // Project Includes
@@ -97,6 +100,9 @@ LoadingContext::~LoadingContext()
 //=============================================================================
 void LoadingContext::OnStart( ContextEnum previousContext )
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 loading: LoadingContext::OnStart entered previous=%d", previousContext );
+#endif
     SetMemoryIdentification( "LoadingContext" );
 #ifndef FINAL
     if( CommandLineOptions::Get( CLO_PRINT_LOAD_TIME ) )
@@ -110,6 +116,9 @@ void LoadingContext::OnStart( ContextEnum previousContext )
     this->PrepareNewHeaps();
 
     HeapMgr()->PushHeap( GMA_LEVEL_OTHER );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 loading: level heap prepared and pushed" );
+#endif
 
     // Note: *** Do NOT add any calls before the following GUI system call
     //           that will cause an AddRequest to the loading manager.
@@ -126,12 +135,18 @@ void LoadingContext::OnStart( ContextEnum previousContext )
     // tell GUI system to run backend during loading
     //
     GetGuiSystem()->HandleMessage( GUI_MSG_RUN_BACKEND );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 loading: GUI backend started" );
+#endif
 
 
     GetCoinManager()->Init();
     GetSparkleManager()->Init();
 
 	GetHitnRunManager()->Init();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 loading: coin, sparkle, and hit-and-run managers initialized" );
+#endif
 
     // This is here since it needs to be in all modes.
     //
@@ -139,15 +154,27 @@ void LoadingContext::OnStart( ContextEnum previousContext )
     GetSuperCamManager()->Init( shutdown );
 
     GetVehicleCentral()->PreLoad();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 loading: cameras initialized and vehicles preloaded" );
+#endif
 
     GetRenderManager()->LoadAllNeededData();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 loading: render manager data queued" );
+#endif
 
     PedestrianManager::GetInstance()->InitDefaultModelGroups();
 
     GetPresentationManager()->Initialize();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 loading: pedestrians and presentation initialized" );
+#endif
 
     GetGameplayManager()->Initialize();
     GetGameplayManager()->LoadLevelData();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 loading: gameplay manager initialized and level data queued" );
+#endif
 }
 
 //=============================================================================

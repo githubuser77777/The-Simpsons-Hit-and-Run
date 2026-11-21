@@ -25,6 +25,9 @@
 #include <p3d/utility.hpp>
 #include <p3d/context.hpp>
 #include <pddi/pddi.hpp>
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+#include <SDL.h>
+#endif
 
 //========================================
 // Project Includes
@@ -134,6 +137,9 @@ BootupContext* BootupContext::GetInstance()
 //=============================================================================
 void BootupContext::StartMovies()
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 startup: BootupContext::StartMovies entered" );
+#endif
 #ifndef FINAL
     if( CommandLineOptions::Get( CLO_SKIP_FE ) )
     {
@@ -183,6 +189,9 @@ void BootupContext::StartMovies()
 #ifdef SHOW_MOVIES
         if( CommandLineOptions::Get( CLO_SKIP_MOVIE ) )
         {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 movie: movie playback skipped; switching to frontend" );
+#endif
             // Switch to frontend context.
             GetGameFlow()->SetContext( CONTEXT_FRONTEND );
         }
@@ -190,6 +199,9 @@ void BootupContext::StartMovies()
         {
             FMVEvent* pEvent = 0;
 
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 movie: queueing %s", MovieNames::VUGLOGO );
+#endif
             GetPresentationManager()->QueueFMV( &pEvent, this );
             strcpy( pEvent->fileName, MovieNames::VUGLOGO );
             pEvent->SetRenderLayer( RenderEnums::PresentationSlot );
@@ -197,6 +209,10 @@ void BootupContext::StartMovies()
             pEvent->SetAudioIndex( FMVEvent::AUDIO_INDEX_ENGLISH );
             pEvent->SetClearWhenDone( true );
 
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 movie: queued %s", pEvent->fileName );
+        SDL_Log( "SRR2 movie: queueing %s", MovieNames::FOXLOGO );
+#endif
             GetPresentationManager()->QueueFMV( &pEvent, this );
             strcpy( pEvent->fileName, MovieNames::FOXLOGO );
             pEvent->SetRenderLayer( RenderEnums::PresentationSlot );
@@ -204,6 +220,10 @@ void BootupContext::StartMovies()
             pEvent->SetAudioIndex( FMVEvent::AUDIO_INDEX_ENGLISH );
             pEvent->SetClearWhenDone( true );
 
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 movie: queued %s", pEvent->fileName );
+        SDL_Log( "SRR2 movie: queueing %s", MovieNames::GRACIELOGO );
+#endif
 			GetPresentationManager()->QueueFMV( &pEvent, this );
             strcpy( pEvent->fileName, MovieNames::GRACIELOGO );
             pEvent->SetRenderLayer( RenderEnums::PresentationSlot );
@@ -211,6 +231,10 @@ void BootupContext::StartMovies()
             pEvent->SetAudioIndex( FMVEvent::AUDIO_INDEX_ENGLISH );
             pEvent->SetClearWhenDone( true );
 
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 movie: queued %s", pEvent->fileName );
+        SDL_Log( "SRR2 movie: queueing %s", MovieNames::RADICALLOGO );
+#endif
             GetPresentationManager()->QueueFMV( &pEvent, this );
             strcpy( pEvent->fileName, MovieNames::RADICALLOGO );
             pEvent->SetRenderLayer( RenderEnums::PresentationSlot );
@@ -218,6 +242,9 @@ void BootupContext::StartMovies()
             pEvent->SetAudioIndex( FMVEvent::AUDIO_INDEX_ENGLISH );
             pEvent->SetClearWhenDone( true );
 
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 movie: queued %s; chilling GUI layer", pEvent->fileName );
+#endif
             GetRenderManager()->mpLayer( RenderEnums::GUI )->Chill();
         }
 #else
@@ -225,11 +252,17 @@ void BootupContext::StartMovies()
         GetGameFlow()->SetContext( CONTEXT_FRONTEND );
 #endif
     }
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 movie: BootupContext::StartMovies completed" );
+#endif
 }
 
 void
 BootupContext::StartLoadingSound()
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 startup: starting sound loads" );
+#endif
     GetSoundManager()->OnBootupStart();
 
     GetLoadingManager()->AddCallback( this, (void*)GetSoundManager() );
@@ -272,6 +305,9 @@ void BootupContext::LoadConfig()
 //==============================================================================
 void BootupContext::OnStart( ContextEnum previousContext )
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 startup: BootupContext::OnStart entered" );
+#endif
     SetMemoryIdentification( "BootupContext" );
     HeapMgr()->PrepareHeapsFeCleanup();
     HeapMgr()->PrepareHeapsFeSetup();
@@ -282,6 +318,9 @@ void BootupContext::OnStart( ContextEnum previousContext )
 
     MEMTRACK_PUSH_FLAG( "Bootup" );
     GetGameDataManager()->Init();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 startup: game data manager initialized" );
+#endif
 
 #ifdef RAD_PS2
     // must load memory card info first, before anything else, since the
@@ -295,15 +334,24 @@ void BootupContext::OnStart( ContextEnum previousContext )
 
     GetGuiSystem()->Init();
     GetGuiSystem()->RegisterUserInputHandlers();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 startup: GUI initialized" );
+#endif
 
     GetCardGallery()->Init();
     GetCheatInputSystem()->Init();
     GetTutorialManager()->Initialize();
     GetATCManager()->Init();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 startup: card, cheat, tutorial, and ATC managers initialized" );
+#endif
 
     GetCharacterSheetManager()->InitCharacterSheet();
 
     GetPresentationManager()->InitializePlayerDrawable();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 startup: presentation drawable initialized" );
+#endif
 
 #ifdef RAD_GAMECUBE
     //Initialize the GCManager's timers for testing reset and such.
@@ -313,6 +361,9 @@ void BootupContext::OnStart( ContextEnum previousContext )
     GetWorldPhysicsManager()->Init();
 
     GetInteriorManager()->OnBootupStart();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 startup: world physics and interiors initialized" );
+#endif
 
     // TC: for PS2, we shouldn't start loading sound stuff until we get to the
     //     license screen to avoid any synchronous script parsing that could
@@ -321,10 +372,16 @@ void BootupContext::OnStart( ContextEnum previousContext )
 //    GetSoundManager()->OnBootupStart();
 
     GetCharacterManager()->PreLoad();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 startup: characters preloaded" );
+#endif
 
     // load rewards script
     //
     GetRewardsManager()->LoadScript();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 startup: rewards script loaded" );
+#endif
 
     // preload some data that is common across all levels 
     // MissionScriptLoader::LoadP3DFile hacked to supress their loads in mission scripts
@@ -339,6 +396,9 @@ void BootupContext::OnStart( ContextEnum previousContext )
     // Address any loading requests that the managers have queued up
     //
     GetLoadingManager()->AddCallback( this );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 startup: common bootup assets queued" );
+#endif
 
 #if defined( RAD_PC ) && defined( SHOW_MOVIES )
     GetInputManager()->GetFEMouse()->SetInGameMode( true );
@@ -398,8 +458,14 @@ void BootupContext::OnUpdate( unsigned int elapsedTime )
         if( m_elapsedTime > MINIMUM_LICENSE_SCREEN_DISPLAY_TIME &&
             m_bootupLoadCompleted && m_soundLoadCompleted )
         {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+            SDL_Log( "SRR2 startup: bootup complete; requesting GUI transition" );
+#endif
             // Tell GUI system to quit out of the boot-up state
             GetGuiSystem()->HandleMessage( GUI_MSG_QUIT_BOOTUP );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+            SDL_Log( "SRR2 startup: GUI bootup transition request returned" );
+#endif
 
             m_elapsedTime = -1;
         }
@@ -478,6 +544,9 @@ void BootupContext::OnHandleEvent( EventEnum id, void* pEventData )
 //=============================================================================
 void BootupContext::OnProcessRequestsComplete( void* pUserData )
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 startup: load callback (%s)", pUserData == GetSoundManager() ? "sound" : "bootup" );
+#endif
     if( pUserData == GetSoundManager() )
     {
         // set flag indicating all sound loads have completed
@@ -502,9 +571,15 @@ void BootupContext::OnProcessRequestsComplete( void* pUserData )
     //
     if( m_bootupLoadCompleted && m_soundLoadCompleted )
     {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 startup: all bootup loads complete; finalizing sound" );
+#endif
         GetSoundManager()->OnBootupComplete();
 
         GetInputManager()->ToggleRumble( false );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 startup: bootup completion callback finished" );
+#endif
     }
 }
 

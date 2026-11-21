@@ -16,6 +16,9 @@
 #include <raddebug.hpp>
 #include <raddebugwatch.hpp>
 #include <p3d/view.hpp>
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+#include <SDL.h>
+#endif
 
 //========================================
 // Project Includes
@@ -692,15 +695,27 @@ void PresentationManager::Update( unsigned int elapsedTime )
 
         if( finished )
         {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+            SDL_Log( "SRR2 movie: presentation event finished file=%s", mpCurrent->fileName );
+#endif
             if( mpCurrent->pCallback != NULL )
             {
                 mpCurrent->pCallback->OnPresentationEventEnd( mpCurrent );
             }
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+            SDL_Log( "SRR2 movie: presentation end callback returned file=%s", mpCurrent->fileName );
+#endif
             mpCurrent->Stop();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+            SDL_Log( "SRR2 movie: presentation event Stop returned file=%s", mpCurrent->fileName );
+#endif
             mpPlayerDrawable->SetPlayer( NULL );
 
             ReturnToPool( mpCurrent );
 
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+            SDL_Log( "SRR2 movie: presentation event returned to pool" );
+#endif
             mpCurrent = NULL;
         }
     }

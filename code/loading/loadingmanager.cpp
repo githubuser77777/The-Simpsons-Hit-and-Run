@@ -17,6 +17,9 @@
 #include <radtime.hpp>
 #include <radfile.hpp>
 #include <string.h>
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+#include <SDL.h>
+#endif
 
 //========================================
 // Project Includes
@@ -292,6 +295,9 @@ void LoadingManager::OnLoadFileComplete( void* pUserData )
 {
     // Display some debug info.
     LoadingRequest& request = mRequests[mRequestHead ];
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 loading: file request completed %s", request.filename );
+#endif
     rAssert( pUserData == &request );
     
     extern bool gLoadingSpew;
@@ -309,7 +315,13 @@ void LoadingManager::OnLoadFileComplete( void* pUserData )
 
     if(request.pCallback)
     {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 loading: invoking callback for %s", request.filename );
+#endif
         request.pCallback->OnProcessRequestsComplete(request.pUserData);
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 loading: callback returned for %s", request.filename );
+#endif
     }
 
     request.pFileHandler->Release();
@@ -607,6 +619,9 @@ void LoadingManager::ProcessNextRequest()
         
             if ( request.filename[0] != '\0' )
             {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+                SDL_Log( "SRR2 loading: starting file request %s", request.filename );
+#endif
                 if ( !(CommandLineOptions::Get( CLO_NO_LOADING_SPEW )) )
                 {            
                     rReleasePrintf( "<<START>> Async Loading: %s\n", request.filename );

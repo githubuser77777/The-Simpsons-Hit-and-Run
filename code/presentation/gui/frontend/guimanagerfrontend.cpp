@@ -49,6 +49,9 @@
 #include <presentation/gui/frontend/guiscreenviewmovies.h>
 #include <presentation/gui/frontend/guiscreenplaymovie.h>
 #include <presentation/gui/frontend/guiscreendisplay.h>
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+#include <SDL.h>
+#endif
 
 #include <presentation/presentation.h>
 #include <presentation/fmvplayer/fmvplayer.h>
@@ -515,6 +518,9 @@ void CGuiManagerFrontEnd::HandleMessage
 */
             else if( GUI_FE_SHUTTING_DOWN == m_state )
             {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+                SDL_Log( "SRR2 frontend: shutdown animation complete" );
+#endif
                 m_state = GUI_FE_TERMINATED;
 
                 CGuiScreen::Reset3dFEMultiController();
@@ -584,7 +590,14 @@ void CGuiManagerFrontEnd::HandleMessage
 
                     // let's go to normal gameplay mode
                     //
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+                    SDL_Log( "SRR2 frontend: requesting CONTEXT_LOADING_GAMEPLAY level=%d mission=%d",
+                             currentMission.mLevel, currentMission.mMissionNumber );
+#endif
                     GetGameFlow()->SetContext( CONTEXT_LOADING_GAMEPLAY );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+                    SDL_Log( "SRR2 frontend: SetContext(CONTEXT_LOADING_GAMEPLAY) returned" );
+#endif
                 }
             }
 
@@ -638,6 +651,9 @@ void CGuiManagerFrontEnd::HandleMessage
 
         case GUI_MSG_QUIT_FRONTEND:
         {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+            SDL_Log( "SRR2 frontend: GUI_MSG_QUIT_FRONTEND players=%d", param1 );
+#endif
             rAssert( GUI_FE_SCREEN_RUNNING == m_state );
 
             GetEventManager()->TriggerEvent( EVENT_FE_START_GAME_SELECTED );
@@ -684,10 +700,16 @@ void CGuiManagerFrontEnd::HandleMessage
             }
 
             m_state = GUI_FE_SHUTTING_DOWN;
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+            SDL_Log( "SRR2 frontend: entered GUI_FE_SHUTTING_DOWN screen=%d", m_currentScreen );
+#endif
 
             // Tell the current screen to shut down.
             //
             this->FindWindowByID( m_currentScreen )->HandleMessage( GUI_MSG_WINDOW_EXIT );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+            SDL_Log( "SRR2 frontend: current screen exit request returned" );
+#endif
 
             break;
         }

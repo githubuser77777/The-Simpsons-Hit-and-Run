@@ -118,6 +118,7 @@ protected:
 //   float alphaRef;
 
     int maxTexSize;
+    int m_SwapInterval;
 };
 
 class pglPrimBufferStream;

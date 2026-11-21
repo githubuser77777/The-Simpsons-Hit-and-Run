@@ -30,11 +30,18 @@
 #include <worldsim/avatarmanager.h>
 
 #include <raddebug.hpp> // Foundation
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+#include <SDL.h>
+#endif
 #include <Group.h>
 #include <Screen.h>
 #include <Page.h>
 #include <Text.h>
 #include <strings/unicodeString.h>
+
+#if !defined(RAD_PC) && !defined(SRR2_USE_PC_ASSETS)
+#define SRR2_HAS_CONSOLE_SETTINGS
+#endif
 
 //===========================================================================
 // Global Data, Local Data, Local Classes
@@ -44,12 +51,12 @@ enum ePauseSettingsMenuItem
 {
     MENU_ITEM_CAMERA,
     MENU_ITEM_JUMP_CAMERAS,
-#ifndef RAD_PC
+#ifdef SRR2_HAS_CONSOLE_SETTINGS
     MENU_ITEM_INVERT_CAM_CONTROL,
 #endif
     MENU_ITEM_INTERSECT_NAV_SYSTEM,
     MENU_ITEM_RADAR,
-#ifndef RAD_PC
+#ifdef SRR2_HAS_CONSOLE_SETTINGS
     MENU_ITEM_VIBRATION,
 #endif
     MENU_ITEM_TUTORIAL,
@@ -62,12 +69,12 @@ const char* PAUSE_SETTINGS_MENU_ITEMS[] =
 {
     "Camera",
     "JumpCamera",
-#ifndef RAD_PC
+#ifdef SRR2_HAS_CONSOLE_SETTINGS
     "InvertCamControl",
 #endif
     "IntersectNavSystem",
     "Radar",
-#ifndef RAD_PC
+#ifdef SRR2_HAS_CONSOLE_SETTINGS
     "Vibration",
 #endif
     "Tutorial",
@@ -112,15 +119,32 @@ CGuiScreenPauseSettings::CGuiScreenPauseSettings
     m_pMenu( NULL ),
     m_currentCameraSelectionMode( CAMERA_SELECTION_NOT_AVAILABLE )
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 PauseSettings: constructor body entered screen=%s parent=%s",
+             m_pScroobyScreen != NULL ? "present" : "null",
+             pParent != NULL ? "present" : "null" );
+#endif
 MEMTRACK_PUSH_GROUP( "CGuiScreenPauseSettings" );
     // Retrieve the Scrooby drawing elements.
     //
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 PauseSettings: looking up PauseSettings page" );
+#endif
     Scrooby::Page* pPage = m_pScroobyScreen->GetPage( "PauseSettings" );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 PauseSettings: page lookup returned %s", pPage != NULL ? "present" : "null" );
+#endif
 	rAssert( pPage );
 
     // Create a menu.
     //
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 PauseSettings: creating menu with %d items", NUM_PAUSE_SETTINGS_MENU_ITEMS );
+#endif
     m_pMenu = new CGuiMenu( this, NUM_PAUSE_SETTINGS_MENU_ITEMS, GUI_TEXT_MENU, MENU_SFX_NONE );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 PauseSettings: menu creation returned %s", m_pMenu != NULL ? "present" : "null" );
+#endif
     rAssert( m_pMenu != NULL );
     
     // Add menu items
@@ -129,15 +153,31 @@ MEMTRACK_PUSH_GROUP( "CGuiScreenPauseSettings" );
 
     for( int i = 0; i < NUM_PAUSE_SETTINGS_MENU_ITEMS; i++ )
     {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 PauseSettings: item %d group lookup %s",
+                 i, PAUSE_SETTINGS_MENU_ITEMS[ i ] );
+#endif
         Scrooby::Group* group = pPage->GetGroup( PAUSE_SETTINGS_MENU_ITEMS[ i ] );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 PauseSettings: item %d group=%s",
+                 i, group != NULL ? "present" : "null" );
+#endif
         rAssert( group != NULL );
 
         Scrooby::Text* pText = group->GetText( PAUSE_SETTINGS_MENU_ITEMS[ i ] );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 PauseSettings: item %d label=%s",
+                 i, pText != NULL ? "present" : "null" );
+#endif
         rAssert( pText != NULL );
         pText->SetTextMode( Scrooby::TEXT_WRAP );
 
         sprintf( itemName, "%s_Value", PAUSE_SETTINGS_MENU_ITEMS[ i ] );
         Scrooby::Text* pTextValue = group->GetText( itemName );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 PauseSettings: item %d value=%s",
+                 i, pTextValue != NULL ? "present" : "null" );
+#endif
         rAssert( pTextValue != NULL );
         pTextValue->SetTextMode( Scrooby::TEXT_WRAP );
 
@@ -147,6 +187,9 @@ MEMTRACK_PUSH_GROUP( "CGuiScreenPauseSettings" );
         sprintf( itemName, "%s_RArrow", PAUSE_SETTINGS_MENU_ITEMS[ i ] );
         Scrooby::Sprite* pRArrow = group->GetSprite( itemName );
 
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 PauseSettings: item %d adding menu entry", i );
+#endif
         m_pMenu->AddMenuItem( pText,
                               pTextValue,
                               NULL,
@@ -154,6 +197,9 @@ MEMTRACK_PUSH_GROUP( "CGuiScreenPauseSettings" );
                               pLArrow,
                               pRArrow,
                               SELECTION_ENABLED | VALUES_WRAPPED | TEXT_OUTLINE_ENABLED );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 PauseSettings: item %d menu entry added", i );
+#endif
     }
 
 #ifdef RAD_GAMECUBE
@@ -197,7 +243,13 @@ MEMTRACK_PUSH_GROUP( "CGuiScreenPauseSettings" );
 #endif
     }
 
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 PauseSettings: registering cheat callback" );
+#endif
     GetCheatInputSystem()->RegisterCallback( this );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 PauseSettings: constructor completed" );
+#endif
 MEMTRACK_POP_GROUP("CGuiScreenPauseSettings");
 }
 
@@ -271,7 +323,7 @@ void CGuiScreenPauseSettings::HandleMessage
                     //
                     GetSuperCamManager()->GetSCC( 0 )->Update( 0 );
                 }
-#ifndef RAD_PC
+#ifdef SRR2_HAS_CONSOLE_SETTINGS
                 else if( param1 == MENU_ITEM_VIBRATION )
                 {
                     if( param2 == 1 ) // vibration turned ON
@@ -365,7 +417,7 @@ void CGuiScreenPauseSettings::InitIntro()
     //
     bool isSettingOn = false;
 
-#ifndef RAD_PC
+#ifdef SRR2_HAS_CONSOLE_SETTINGS
     isSettingOn = GetSuperCamManager()->GetSCC( 0 )->IsInvertedCameraEnabled();
     m_pMenu->SetSelectionValue( MENU_ITEM_INVERT_CAM_CONTROL,
                                 isSettingOn ? 1 : 0 );
@@ -382,7 +434,7 @@ void CGuiScreenPauseSettings::InitIntro()
     isSettingOn = GetGuiSystem()->IsRadarEnabled();
     m_pMenu->SetSelectionValue( MENU_ITEM_RADAR,
                                 isSettingOn ? 1 : 0 );
-#ifndef RAD_PC
+#ifdef SRR2_HAS_CONSOLE_SETTINGS
     isSettingOn = GetInputManager()->IsRumbleEnabled();
     m_pMenu->SetSelectionValue( MENU_ITEM_VIBRATION,
                                 isSettingOn ? 1 : 0 );
@@ -445,7 +497,7 @@ void CGuiScreenPauseSettings::InitOutro()
     rAssert( m_pMenu != NULL );
     bool isSettingOn = false;
 
-#ifndef RAD_PC
+#ifdef SRR2_HAS_CONSOLE_SETTINGS
     isSettingOn = (m_pMenu->GetSelectionValue( MENU_ITEM_INVERT_CAM_CONTROL ) == 1);
     GetSuperCamManager()->GetSCC( 0 )->EnableInvertedCamera( isSettingOn );
 #endif
@@ -459,7 +511,7 @@ void CGuiScreenPauseSettings::InitOutro()
     isSettingOn = (m_pMenu->GetSelectionValue( MENU_ITEM_RADAR ) == 1);
     GetGuiSystem()->SetRadarEnabled( isSettingOn );
 
-#ifndef RAD_PC
+#ifdef SRR2_HAS_CONSOLE_SETTINGS
     isSettingOn = (m_pMenu->GetSelectionValue( MENU_ITEM_VIBRATION ) == 1);
     GetInputManager()->SetRumbleEnabled( isSettingOn );
 #endif

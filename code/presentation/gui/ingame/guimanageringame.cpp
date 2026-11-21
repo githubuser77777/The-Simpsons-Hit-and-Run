@@ -84,6 +84,9 @@
 
 #include <raddebug.hpp>
 #include <raddebugwatch.hpp>
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+#include <SDL.h>
+#endif
 
 #include <Layer.h>
 #include <Page.h>
@@ -238,38 +241,51 @@ CGuiManagerInGame::~CGuiManagerInGame()
 //===========================================================================
 void CGuiManagerInGame::Populate()
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+#define SRR2_INGAME_POPULATE_STEP(step) SDL_Log( "SRR2 GUI populate: %s", step )
+#else
+#define SRR2_INGAME_POPULATE_STEP(step) ((void)0)
+#endif
 MEMTRACK_PUSH_GROUP( "CGUIManagerInGame" );
     HeapMgr()->PushHeap( GMA_LEVEL_HUD );
 
     Scrooby::Screen* pScroobyScreen = NULL;
     CGuiScreen* pScreen = NULL;
 
+    SRR2_INGAME_POPULATE_STEP( "lookup Message" );
     pScroobyScreen = m_pScroobyProject->GetScreen( "Message" );
     if( pScroobyScreen != NULL )
     {
+        SRR2_INGAME_POPULATE_STEP( "create Message" );
         pScreen = new CGuiScreenMessage( pScroobyScreen, this );
         this->AddWindow( CGuiWindow::GUI_SCREEN_ID_GENERIC_MESSAGE, pScreen );
     }
 
+    SRR2_INGAME_POPULATE_STEP( "lookup Prompt" );
     pScroobyScreen = m_pScroobyProject->GetScreen( "Prompt" );
     if( pScroobyScreen != NULL )
     {
+        SRR2_INGAME_POPULATE_STEP( "create Prompt" );
         pScreen = new CGuiScreenPrompt( pScroobyScreen, this );
         this->AddWindow( CGuiWindow::GUI_SCREEN_ID_GENERIC_PROMPT, pScreen );
     }
 
+    SRR2_INGAME_POPULATE_STEP( "lookup ErrorPrompt" );
     pScroobyScreen = m_pScroobyProject->GetScreen( "ErrorPrompt" );
     if( pScroobyScreen != NULL )
     {
+        SRR2_INGAME_POPULATE_STEP( "create ErrorPrompt" );
         pScreen = new CGuiScreenPrompt( pScroobyScreen, this,
                                         CGuiWindow::GUI_SCREEN_ID_ERROR_PROMPT );
 
         this->AddWindow( CGuiWindow::GUI_SCREEN_ID_ERROR_PROMPT, pScreen );
     }
 
+    SRR2_INGAME_POPULATE_STEP( "lookup Hud" );
     pScroobyScreen = m_pScroobyProject->GetScreen( "Hud" );
     if( pScroobyScreen != NULL )
     {
+        SRR2_INGAME_POPULATE_STEP( "create Hud" );
         pScreen = new CGuiScreenHud( pScroobyScreen, this );
         this->AddWindow( CGuiWindow::GUI_SCREEN_ID_HUD, pScreen );
 
@@ -279,6 +295,7 @@ MEMTRACK_PUSH_GROUP( "CGUIManagerInGame" );
         rAssert( s_currentHUD != NULL );
     }
 /*
+    SRR2_INGAME_POPULATE_STEP( "lookup MultiHud" );
     pScroobyScreen = m_pScroobyProject->GetScreen( "MultiHud" );
     if( pScroobyScreen != NULL )
     {
@@ -286,135 +303,174 @@ MEMTRACK_PUSH_GROUP( "CGUIManagerInGame" );
         this->AddWindow( CGuiWindow::GUI_SCREEN_ID_MULTI_HUD, pScreen );
     }
 */
+    SRR2_INGAME_POPULATE_STEP( "lookup MissionLoad" );
     pScroobyScreen = m_pScroobyProject->GetScreen( "MissionLoad" );
     if( pScroobyScreen != NULL )
     {
+        SRR2_INGAME_POPULATE_STEP( "create MissionLoad" );
         pScreen = new CGuiScreenMissionLoad( pScroobyScreen, this );
         this->AddWindow( CGuiWindow::GUI_SCREEN_ID_MISSION_LOAD, pScreen );
     }
 
+    SRR2_INGAME_POPULATE_STEP( "lookup MissionOver" );
     pScroobyScreen = m_pScroobyProject->GetScreen( "MissionOver" );
     if( pScroobyScreen != NULL )
     {
+        SRR2_INGAME_POPULATE_STEP( "create MissionOver" );
         pScreen = new CGuiScreenMissionOver( pScroobyScreen, this );
         this->AddWindow( CGuiWindow::GUI_SCREEN_ID_MISSION_OVER, pScreen );
     }
 
+    SRR2_INGAME_POPULATE_STEP( "lookup MissionSuccess" );
     pScroobyScreen = m_pScroobyProject->GetScreen( "MissionLoad" );
     if( pScroobyScreen != NULL )
     {
+        SRR2_INGAME_POPULATE_STEP( "create MissionSuccess" );
         pScreen = new CGuiScreenMissionSuccess( pScroobyScreen, this );
         this->AddWindow( CGuiWindow::GUI_SCREEN_ID_MISSION_SUCCESS, pScreen );
     }
 
+    SRR2_INGAME_POPULATE_STEP( "lookup LevelStats" );
     pScroobyScreen = m_pScroobyProject->GetScreen( "LevelStats" );
     if( pScroobyScreen != NULL )
     {
+        SRR2_INGAME_POPULATE_STEP( "create LevelStats" );
         pScreen = new CGuiScreenLevelStats( pScroobyScreen, this );
         this->AddWindow( CGuiWindow::GUI_SCREEN_ID_LEVEL_STATS, pScreen );
     }
 
+    SRR2_INGAME_POPULATE_STEP( "lookup LevelEnd" );
     pScroobyScreen = m_pScroobyProject->GetScreen( "LevelEnd" );
     if( pScroobyScreen != NULL )
     {
+        SRR2_INGAME_POPULATE_STEP( "create LevelEnd" );
         pScreen = new CGuiScreenLevelEnd( pScroobyScreen, this );
         this->AddWindow( CGuiWindow::GUI_SCREEN_ID_LEVEL_END, pScreen );
     }
 
+    SRR2_INGAME_POPULATE_STEP( "lookup PauseViewCards" );
     pScroobyScreen = m_pScroobyProject->GetScreen( "PauseViewCards" );
     if( pScroobyScreen != NULL )
     {
+        SRR2_INGAME_POPULATE_STEP( "create PauseViewCards" );
         pScreen = new CGuiScreenViewCards( pScroobyScreen, this );
         this->AddWindow( CGuiWindow::GUI_SCREEN_ID_VIEW_CARDS, pScreen );
     }
 
+    SRR2_INGAME_POPULATE_STEP( "lookup LetterBox" );
     pScroobyScreen = m_pScroobyProject->GetScreen( "LetterBox" );
     if( pScroobyScreen != NULL )
     {
+        SRR2_INGAME_POPULATE_STEP( "create LetterBox" );
         pScreen = new CGuiScreenLetterBox( pScroobyScreen, this );
         this->AddWindow( CGuiWindow::GUI_SCREEN_ID_LETTER_BOX, pScreen );
     }
 
+    SRR2_INGAME_POPULATE_STEP( "lookup IrisWipe" );
     pScroobyScreen = m_pScroobyProject->GetScreen( "IrisWipe" );
     if( pScroobyScreen != NULL )
     {
+        SRR2_INGAME_POPULATE_STEP( "create IrisWipe" );
         pScreen = new CGuiScreenIrisWipe( pScroobyScreen, this );
         this->AddWindow( CGuiWindow::GUI_SCREEN_ID_IRIS_WIPE, pScreen );
     }
 
+    SRR2_INGAME_POPULATE_STEP( "lookup PhoneBooth" );
     pScroobyScreen = m_pScroobyProject->GetScreen( "PhoneBooth" );
     if( pScroobyScreen != NULL )
     {
+        SRR2_INGAME_POPULATE_STEP( "create PhoneBooth" );
         pScreen = new CGuiScreenPhoneBooth( pScroobyScreen, this );
         this->AddWindow( CGuiWindow::GUI_SCREEN_ID_PHONE_BOOTH, pScreen );
     }
 
+    SRR2_INGAME_POPULATE_STEP( "lookup PurchaseRewards" );
     pScroobyScreen = m_pScroobyProject->GetScreen( "PurchaseRewards" );
     if( pScroobyScreen != NULL )
     {
+        SRR2_INGAME_POPULATE_STEP( "create PurchaseRewards" );
         pScreen = new CGuiScreenPurchaseRewards( pScroobyScreen, this );
         this->AddWindow( CGuiWindow::GUI_SCREEN_ID_PURCHASE_REWARDS, pScreen );
     }
 
+    SRR2_INGAME_POPULATE_STEP( "lookup PauseSunday" );
     pScroobyScreen = m_pScroobyProject->GetScreen( "PauseSunday" );
     if( pScroobyScreen != NULL )
     {
+        SRR2_INGAME_POPULATE_STEP( "create PauseSunday" );
         pScreen = new CGuiScreenPauseSunday( pScroobyScreen, this );
         this->AddWindow( CGuiWindow::GUI_SCREEN_ID_PAUSE_SUNDAY, pScreen );
     }
 
+    SRR2_INGAME_POPULATE_STEP( "lookup PauseMission" );
     pScroobyScreen = m_pScroobyProject->GetScreen( "PauseMission" );
     if( pScroobyScreen != NULL )
     {
+        SRR2_INGAME_POPULATE_STEP( "create PauseMission" );
         pScreen = new CGuiScreenPauseMission( pScroobyScreen, this );
         this->AddWindow( CGuiWindow::GUI_SCREEN_ID_PAUSE_MISSION, pScreen );
     }
 
+    SRR2_INGAME_POPULATE_STEP( "lookup PauseOptions" );
     pScroobyScreen = m_pScroobyProject->GetScreen( "PauseOptions" );
     if( pScroobyScreen != NULL )
     {
+        SRR2_INGAME_POPULATE_STEP( "create PauseOptions" );
         pScreen = new CGuiScreenPauseOptions( pScroobyScreen, this );
         this->AddWindow( CGuiWindow::GUI_SCREEN_ID_OPTIONS, pScreen );
     }
 #ifdef RAD_PC
+    SRR2_INGAME_POPULATE_STEP( "lookup PauseDisplay" );
     pScroobyScreen = m_pScroobyProject->GetScreen( "PauseDisplay" );
     if( pScroobyScreen != NULL )
     {
+        SRR2_INGAME_POPULATE_STEP( "create PauseDisplay" );
         pScreen = new CGuiScreenPauseDisplay( pScroobyScreen, this );
         this->AddWindow( CGuiWindow::GUI_SCREEN_ID_DISPLAY, pScreen );
     }
 #endif
 
 #ifdef RAD_PC
+    SRR2_INGAME_POPULATE_STEP( "lookup PauseController" );
     pScroobyScreen = m_pScroobyProject->GetScreen( "PauseController" );
     if( pScroobyScreen != NULL )
     {
+        SRR2_INGAME_POPULATE_STEP( "create PauseController" );
         pScreen = new CGuiScreenPauseController( pScroobyScreen, this );
         this->AddWindow( CGuiWindow::GUI_SCREEN_ID_CONTROLLER, pScreen );
     }
 #endif
 
+    SRR2_INGAME_POPULATE_STEP( "lookup PauseSound" );
     pScroobyScreen = m_pScroobyProject->GetScreen( "PauseSound" );
     if( pScroobyScreen != NULL )
     {
+        SRR2_INGAME_POPULATE_STEP( "create PauseSound" );
         pScreen = new CGuiScreenPauseSound( pScroobyScreen, this );
         this->AddWindow( CGuiWindow::GUI_SCREEN_ID_SOUND, pScreen );
     }
 
+    SRR2_INGAME_POPULATE_STEP( "lookup PauseSettings" );
     pScroobyScreen = m_pScroobyProject->GetScreen( "PauseSettings" );
     if( pScroobyScreen != NULL )
     {
+        SRR2_INGAME_POPULATE_STEP( "create PauseSettings" );
         pScreen = new CGuiScreenPauseSettings( pScroobyScreen, this );
+        SRR2_INGAME_POPULATE_STEP( "PauseSettings constructor returned" );
         this->AddWindow( CGuiWindow::GUI_SCREEN_ID_SETTINGS, pScreen );
+        SRR2_INGAME_POPULATE_STEP( "PauseSettings AddWindow returned" );
     }
 
+    SRR2_INGAME_POPULATE_STEP( "lookup MissionSelect" );
     pScroobyScreen = m_pScroobyProject->GetScreen( "MissionSelect" );
     if( pScroobyScreen != NULL )
     {
+        SRR2_INGAME_POPULATE_STEP( "create MissionSelect" );
         pScreen = new CGuiScreenMissionSelect( pScroobyScreen, this );
         this->AddWindow( CGuiWindow::GUI_SCREEN_ID_MISSION_SELECT, pScreen );
     }
 /*
+    SRR2_INGAME_POPULATE_STEP( "lookup ViewMap" );
     pScroobyScreen = m_pScroobyProject->GetScreen( "ViewMap" );
     if( pScroobyScreen != NULL )
     {
@@ -422,30 +478,38 @@ MEMTRACK_PUSH_GROUP( "CGUIManagerInGame" );
         this->AddWindow( CGuiWindow::GUI_SCREEN_ID_HUD_MAP, pScreen );
     }
 */
+    SRR2_INGAME_POPULATE_STEP( "lookup MemoryCard" );
     pScroobyScreen = m_pScroobyProject->GetScreen( "MemoryCard" );
     if( pScroobyScreen != NULL )
     {
+        SRR2_INGAME_POPULATE_STEP( "create MemoryCard" );
         pScreen = new CGuiScreenMemoryCard( pScroobyScreen, this );
         this->AddWindow( CGuiWindow::GUI_SCREEN_ID_MEMORY_CARD, pScreen );
     }
 
+    SRR2_INGAME_POPULATE_STEP( "lookup SaveGame" );
     pScroobyScreen = m_pScroobyProject->GetScreen( "SaveGame" );
     if( pScroobyScreen != NULL )
     {
+        SRR2_INGAME_POPULATE_STEP( "create SaveGame" );
         pScreen = new CGuiScreenSaveGame( pScroobyScreen, this );
         this->AddWindow( CGuiWindow::GUI_SCREEN_ID_SAVE_GAME, pScreen );
     }
 
+    SRR2_INGAME_POPULATE_STEP( "lookup Tutorial" );
     pScroobyScreen = m_pScroobyProject->GetScreen( "Tutorial" );
     if( pScroobyScreen != NULL )
     {
+        SRR2_INGAME_POPULATE_STEP( "create Tutorial" );
         pScreen = new CGuiScreenTutorial( pScroobyScreen, this );
         this->AddWindow( CGuiWindow::GUI_SCREEN_ID_TUTORIAL, pScreen );
     }
 
+    SRR2_INGAME_POPULATE_STEP( "lookup CreditsPostFMV" );
     pScroobyScreen = m_pScroobyProject->GetScreen( "CreditsPostFMV" );
     if( pScroobyScreen != NULL )
     {
+        SRR2_INGAME_POPULATE_STEP( "create CreditsPostFMV" );
         pScreen = new CGuiScreenCreditsPostFMV( pScroobyScreen, this );
         this->AddWindow( CGuiWindow::GUI_SCREEN_ID_VIEW_CREDITS, pScreen );
     }
@@ -460,8 +524,10 @@ MEMTRACK_PUSH_GROUP( "CGUIManagerInGame" );
         }
     }
 
+    SRR2_INGAME_POPULATE_STEP( "complete" );
     HeapMgr()->PopHeap( GMA_LEVEL_HUD );
 MEMTRACK_POP_GROUP("CGUIManagerInGame");
+#undef SRR2_INGAME_POPULATE_STEP
 }
 
 void

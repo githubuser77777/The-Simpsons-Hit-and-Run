@@ -7,6 +7,9 @@
 #include <pddi/gl/gldisplay.hpp>
 #include <pddi/base/debug.hpp>
 #include <SDL.h>
+#ifdef SRR2_FRAME_TIMING_DIAGNOSTICS
+#include <radtime.hpp>
+#endif
 
 #include<stdio.h>
 #include<string.h>
@@ -180,7 +183,7 @@ bool pglDisplay ::InitDisplay(const pddiDisplayInit* init)
     SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, bpp == 16 ? 6 : 8);
     SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, bpp == 16 ? 5 : 8);
     if (init->bufferMask & PDDI_BUFFER_DEPTH)
-#ifdef __SWITCH__
+#if defined(__SWITCH__) && !defined(__SWITCH2__)
         SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, init->bufferMask & PDDI_BUFFER_STENCIL ? 24 : 32);
 #else
         SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
@@ -335,7 +338,52 @@ void pglDisplay::SetGamma(float r, float g, float b)
 
 void pglDisplay::SwapBuffers(void)
 {
+#if defined(SRR2_STARTUP_DIAGNOSTICS) && defined(SRR2_FRAME_TIMING_DIAGNOSTICS)
+    const unsigned swapStartTime = radTimeGetMicroseconds();
+#endif
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    static unsigned int startupSwapCount = 0;
+    if( startupSwapCount % 60 == 0 )
+    {
+        SDL_Log( "SRR2 startup: swap %u starting", startupSwapCount );
+    }
+#endif
     SDL_GL_SwapWindow(win);
+#if defined(SRR2_STARTUP_DIAGNOSTICS) && defined(SRR2_FRAME_TIMING_DIAGNOSTICS)
+    const unsigned swapTime = radTimeGetMicroseconds() - swapStartTime;
+    static unsigned int timingSwapCount = 0;
+    static unsigned int slowSwapCount = 0;
+    static unsigned int verySlowSwapCount = 0;
+    static unsigned int maxSwapTime = 0;
+    if( swapTime > maxSwapTime )
+    {
+        maxSwapTime = swapTime;
+    }
+    if( swapTime > 20000 )
+    {
+        ++slowSwapCount;
+    }
+    if( swapTime > 33333 )
+    {
+        ++verySlowSwapCount;
+    }
+    if( ++timingSwapCount == 120 )
+    {
+        SDL_Log( "SRR2 perf: swap frames=%u >20ms=%u >33ms=%u max_us=%u",
+                 timingSwapCount, slowSwapCount, verySlowSwapCount, maxSwapTime );
+        timingSwapCount = 0;
+        slowSwapCount = 0;
+        verySlowSwapCount = 0;
+        maxSwapTime = 0;
+    }
+#endif
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    if( startupSwapCount % 60 == 0 )
+    {
+        SDL_Log( "SRR2 startup: swap %u completed", startupSwapCount );
+    }
+    ++startupSwapCount;
+#endif
     reset = false;
 }
 

@@ -15,6 +15,9 @@
 
 // Foundation Tech
 #include <raddebug.hpp>
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+#include <SDL.h>
+#endif
 
 //========================================
 // Project Includes
@@ -118,15 +121,24 @@ void PresentationEvent::Start()
 {
     AnimationPlayer* player = GetPlayer();
 
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 movie: PresentationEvent::Start file=%s loaded=%d", fileName, mbLoaded );
+#endif
     if( !mbLoaded )
     {
         player->LoadData( fileName, this, false, GetUserData() );
 
         mbLoaded = true;
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 movie: PresentationEvent::LoadData returned file=%s", fileName );
+#endif
     }
     player->SetKeepLayersFrozen( mbKeepLayersFrozen );
 	player->SetSkippable(mbIsSkippable);
     player->Play();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 movie: PresentationEvent::Play returned file=%s", fileName );
+#endif
 }
 
 //=============================================================================
@@ -143,6 +155,9 @@ void PresentationEvent::Stop()
 {
     AnimationPlayer* player = GetPlayer();
 
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 movie: PresentationEvent::Stop file=%s clear=%d", fileName, mbClearWhenDone );
+#endif
     if( mbClearWhenDone )
     {
         player->ClearData();
@@ -151,6 +166,9 @@ void PresentationEvent::Stop()
     {
         player->Reset();
     }
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 movie: PresentationEvent::Stop completed file=%s", fileName );
+#endif
 }
 
 //=============================================================================

@@ -14,6 +14,9 @@
 //========================================
 // Foundation Tech
 #include <raddebug.hpp>
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+#include <SDL.h>
+#endif
 
 //========================================
 // Project Includes
@@ -123,6 +126,9 @@ FrontEndContext::~FrontEndContext()
 //=============================================================================
 void FrontEndContext::OnStart( ContextEnum previousContext )
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 startup: FrontEndContext::OnStart entered from context %d", previousContext );
+#endif
     SetMemoryIdentification( "FEContext" );
     MEMTRACK_PUSH_FLAG( "Front End" );
 
@@ -155,7 +161,13 @@ void FrontEndContext::OnStart( ContextEnum previousContext )
     {
         // Start the front end.
         LEAK_DETECTION_CHECKPOINT();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 startup: starting frontend splash" );
+#endif
         this->StartFrontEnd( CGuiWindow::GUI_SCREEN_ID_SPLASH );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 startup: frontend splash started" );
+#endif
     }
 
     GetInputManager()->ToggleRumble( false );

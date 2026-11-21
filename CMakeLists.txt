@@ -56,6 +56,13 @@ find_package(PNG REQUIRED)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 find_package(OpenAL REQUIRED)
+if(TARGET OpenAL::OpenAL)
+	set(SRR2_OPENAL_TARGET OpenAL::OpenAL)
+	set(SRR2_OPENAL_INCLUDE_DIR "")
+else()
+	set(SRR2_OPENAL_TARGET "${OPENAL_LIBRARY}")
+	set(SRR2_OPENAL_INCLUDE_DIR "${OPENAL_INCLUDE_DIR}")
+endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 	add_compile_options(-fvisibility=hidden)
@@ -183,10 +190,15 @@ if(CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
 		AUTHOR "Radical Entertainment"
 		VERSION ${SRR2_VERSION}
 	)
-	nx_create_nro(code/${PROJECT_NAME}
+	if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/romfs")
+		set(SRR2_NRO_ROMFS_ARGUMENT ROMFS romfs)
+	else()
+		set(SRR2_NRO_ROMFS_ARGUMENT)
+	endif()
+	nx_create_nro(${PROJECT_NAME}
 		OUTPUT ${SRR2_FILENAME}${SRR2_REGION}.nro
 		ICON ${PROJECT_NAME}.jpg
 		NACP ${PROJECT_NAME}.nacp
-		ROMFS romfs
+		${SRR2_NRO_ROMFS_ARGUMENT}
 	)
 endif()

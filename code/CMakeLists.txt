@@ -539,6 +539,13 @@ if(SRR2_REGION STREQUAL "PAL")
 endif()
 
 add_executable(${PROJECT_NAME} ${SRR2_SOURCES})
+if(CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
+	# The Switch homebrew build uses the PC game's externally supplied GUI assets.
+	target_compile_definitions(${PROJECT_NAME} PRIVATE
+		SRR2_USE_PC_ASSETS
+		SRR2_SWITCH_PORT
+	)
+endif()
 target_link_libraries(${PROJECT_NAME}
 	${SDL_LIBRARY}
 	choreo

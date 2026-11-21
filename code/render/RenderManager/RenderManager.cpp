@@ -26,6 +26,9 @@
 #include <raddebug.hpp>
 #include <radtime.hpp>
 #include <raddebugwatch.hpp>
+#ifdef SRR2_FRAME_TIMING_DIAGNOSTICS
+#include <SDL.h>
+#endif
  
 //========================================
 // Project Includes
@@ -486,6 +489,17 @@ bool RenderManager::LoadAllNeededData
 //==============================================================================
 void RenderManager::ContextUpdate( unsigned int iElapsedTime )
 {
+#ifdef SRR2_FRAME_TIMING_DIAGNOSTICS
+    static unsigned int layerSamples = 0;
+    static unsigned int maxLayerTime[RenderEnums::numLayers] = {};
+    static unsigned int slowLayerFrames[RenderEnums::numLayers] = {};
+    static unsigned int maxDeleteTime = 0;
+    static unsigned int maxLensFlareTime = 0;
+    static unsigned int maxBeginFrameTime = 0;
+    static unsigned int maxAllLayersTime = 0;
+    static unsigned int maxEndFrameTime = 0;
+#endif
+
     // On the PS2, use a minimum blur all the time    
 #ifdef RAD_PS2
     ApplyPS2Blur();
@@ -502,7 +516,9 @@ void RenderManager::ContextUpdate( unsigned int iElapsedTime )
     p3d::context->SwapBuffers();
     END_PROFILE( "Swap Buffers" );
 
-#if defined( RAD_XBOX ) || defined ( RAD_GAMECUBE ) || defined( RAD_WIN32 )
+#if defined(__SWITCH2__)
+    p3d::display->SetForceVSync( true );
+#elif defined( RAD_XBOX ) || defined ( RAD_GAMECUBE ) || defined( RAD_WIN32 )
     LoadingManager* lm = GetLoadingManager();
     PresentationManager* pm = GetPresentationManager();
     p3d::display->SetForceVSync( lm && !lm->IsLoading(), !(pm && pm->GetFMVPlayer()->IsPlaying()));               
@@ -511,12 +527,32 @@ void RenderManager::ContextUpdate( unsigned int iElapsedTime )
 #ifdef LOAD_SYNC
     FlushDelList(); 
 #else
+#if defined(SRR2_FRAME_TIMING_DIAGNOSTICS)
+    const unsigned deleteStartTime = radTimeGetMicroseconds();
+#endif
     MunchDelList(2000);   // work on the DelList for up to 2000 microseconds, then return
+#if defined(SRR2_FRAME_TIMING_DIAGNOSTICS)
+    const unsigned deleteTime = radTimeGetMicroseconds() - deleteStartTime;
+    if( deleteTime > maxDeleteTime )
+    {
+        maxDeleteTime = deleteTime;
+    }
+#endif
 #endif
     
+#ifdef SRR2_FRAME_TIMING_DIAGNOSTICS
+    const unsigned lensFlareStartTime = radTimeGetMicroseconds();
+#endif
 	BEGIN_PROFILE( "Lens Flare Frame Buffer Read" );
 	LensFlareDSG::ReadFrameBufferIntensities();
 	END_PROFILE( "Lens Flare Frame Buffer Read" );
+#ifdef SRR2_FRAME_TIMING_DIAGNOSTICS
+    const unsigned lensFlareTime = radTimeGetMicroseconds() - lensFlareStartTime;
+    if( lensFlareTime > maxLensFlareTime )
+    {
+        maxLensFlareTime = lensFlareTime;
+    }
+#endif
 
 #ifdef DEBUGWATCH
     mDebugSwapTime = radTimeGetMicroseconds()-t0;
@@ -528,11 +564,24 @@ void RenderManager::ContextUpdate( unsigned int iElapsedTime )
         TransitionMoodLighting( iElapsedTime );
     }
 
+ #ifdef SRR2_FRAME_TIMING_DIAGNOSTICS
+    const unsigned beginFrameStartTime = radTimeGetMicroseconds();
+#endif
     BEGIN_PROFILE( "Begin Frame" );
     p3d::context->BeginFrame();
     END_PROFILE( "Begin Frame" );
+#ifdef SRR2_FRAME_TIMING_DIAGNOSTICS
+    const unsigned beginFrameTime = radTimeGetMicroseconds() - beginFrameStartTime;
+    if( beginFrameTime > maxBeginFrameTime )
+    {
+        maxBeginFrameTime = beginFrameTime;
+    }
+#endif
 
     // Render Stuff; call your Render shots, Tex.
+#ifdef SRR2_FRAME_TIMING_DIAGNOSTICS
+    const unsigned allLayersStartTime = radTimeGetMicroseconds();
+#endif
     for( int i=RenderEnums::numLayers-1; i>-1; i-- )
     {
 #ifdef DEBUGINFO_ENABLED
@@ -545,11 +594,32 @@ void RenderManager::ContextUpdate( unsigned int iElapsedTime )
 #endif
         if( mpRenderLayers[i]->IsRenderReady() )
         {    
+#ifdef SRR2_FRAME_TIMING_DIAGNOSTICS
+            const unsigned layerStartTime = radTimeGetMicroseconds();
+#endif
     BEGIN_PROFILE( "Layers" );
             mpRenderLayers[i]->Render();
     END_PROFILE( "Layers" );
+#ifdef SRR2_FRAME_TIMING_DIAGNOSTICS
+            const unsigned layerTime = radTimeGetMicroseconds() - layerStartTime;
+            if( layerTime > maxLayerTime[i] )
+            {
+                maxLayerTime[i] = layerTime;
+            }
+            if( layerTime > 20000 )
+            {
+                ++slowLayerFrames[i];
+            }
+#endif
         }
     }
+#ifdef SRR2_FRAME_TIMING_DIAGNOSTICS
+    const unsigned allLayersTime = radTimeGetMicroseconds() - allLayersStartTime;
+    if( allLayersTime > maxAllLayersTime )
+    {
+        maxAllLayersTime = allLayersTime;
+    }
+#endif
 
 
     END_PROFILE( "Rendering" );
@@ -620,8 +690,43 @@ void RenderManager::ContextUpdate( unsigned int iElapsedTime )
         GetGame()->SetTime( time );
     }
 
+ #ifdef SRR2_FRAME_TIMING_DIAGNOSTICS
+    const unsigned endFrameStartTime = radTimeGetMicroseconds();
+#endif
    p3d::context->EndFrame( false );
+#ifdef SRR2_FRAME_TIMING_DIAGNOSTICS
+    const unsigned endFrameTime = radTimeGetMicroseconds() - endFrameStartTime;
+    if( endFrameTime > maxEndFrameTime )
+    {
+        maxEndFrameTime = endFrameTime;
+    }
+#endif
 
+#ifdef SRR2_FRAME_TIMING_DIAGNOSTICS
+    if( ++layerSamples == 120 )
+    {
+        SDL_Log( "SRR2 perf: layers GUI=%u/%u PRESENT=%u/%u LEVEL=%u/%u MISSION1=%u/%u MISSION2=%u/%u",
+                 maxLayerTime[RenderEnums::GUI], slowLayerFrames[RenderEnums::GUI],
+                 maxLayerTime[RenderEnums::PresentationSlot], slowLayerFrames[RenderEnums::PresentationSlot],
+                 maxLayerTime[RenderEnums::LevelSlot], slowLayerFrames[RenderEnums::LevelSlot],
+                 maxLayerTime[RenderEnums::MissionSlot1], slowLayerFrames[RenderEnums::MissionSlot1],
+                 maxLayerTime[RenderEnums::MissionSlot2], slowLayerFrames[RenderEnums::MissionSlot2] );
+        SDL_Log( "SRR2 perf: render stages delete=%u lens=%u begin=%u allLayers=%u end=%u",
+                 maxDeleteTime, maxLensFlareTime, maxBeginFrameTime,
+                 maxAllLayersTime, maxEndFrameTime );
+        layerSamples = 0;
+        maxDeleteTime = 0;
+        maxLensFlareTime = 0;
+        maxBeginFrameTime = 0;
+        maxAllLayersTime = 0;
+        maxEndFrameTime = 0;
+        for( int layer = 0; layer < RenderEnums::numLayers; ++layer )
+        {
+            maxLayerTime[layer] = 0;
+            slowLayerFrames[layer] = 0;
+        }
+    }
+#endif
 
 #ifdef DEBUGWATCH
     mDebugRenderTime = radTimeGetMicroseconds()-t0;

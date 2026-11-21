@@ -31,6 +31,9 @@
 #include "audiodatasource.hpp"
 
 #include <vector>
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+#include <SDL.h>
+#endif
 
 extern "C"
 {
@@ -60,6 +63,16 @@ unsigned int const radMovie_NoAudioTrack = 0xFFFFFFFF;
 
 #define RAD_MOVIE_PLAYER_VIDEO_LAG 10
 
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+#define AV_CHK(x) if (int error = (x) < 0) { \
+        char str[AV_ERROR_MAX_STRING_SIZE]; \
+        av_strerror( error, str, AV_ERROR_MAX_STRING_SIZE ); \
+        rDebugPrintf( "%s at %s:%d\n", str, __FILE__, __LINE__ ); \
+        SDL_Log( "SRR2 movie: FFmpeg operation failed at %s:%d", __FILE__, __LINE__ ); \
+        SetState( IRadMoviePlayer2::NoData ); \
+        return; \
+    };
+#else
 #define AV_CHK(x) if (int error = (x) < 0) { \
         char str[AV_ERROR_MAX_STRING_SIZE]; \
         av_strerror( error, str, AV_ERROR_MAX_STRING_SIZE ); \
@@ -67,6 +80,7 @@ unsigned int const radMovie_NoAudioTrack = 0xFFFFFFFF;
         SetState( IRadMoviePlayer2::NoData ); \
         return; \
     };
+#endif
 
 //=============================================================================
 // Static Members
@@ -146,19 +160,46 @@ void radMoviePlayer::Initialize
 
 bool radMoviePlayer::Render( void )
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    static bool loggedFirstRender = false;
+    if( !loggedFirstRender )
+    {
+        SDL_Log( "SRR2 movie: radMoviePlayer::Render entered videoFrame=%s strategy=%s",
+                 m_pVideoFrame != NULL ? "present" : "null",
+                 m_refIRadMovieRenderStrategy != NULL ? "present" : "null" );
+        loggedFirstRender = true;
+    }
+#endif
     rAssert( m_refIRadMovieRenderStrategy != NULL );
     rAssert( m_pVideoFrame != NULL );
         
     if( m_pVideoFrame != NULL )
     {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        static bool loggedFirstStrategyRender = false;
+        if( !loggedFirstStrategyRender )
+        {
+            SDL_Log( "SRR2 movie: invoking movie render strategy" );
+        }
+#endif
         bool ret = m_refIRadMovieRenderStrategy->Render( );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        if( !loggedFirstStrategyRender )
+        {
+            SDL_Log( "SRR2 movie: movie render strategy returned" );
+            loggedFirstStrategyRender = true;
+        }
+#endif
 
-        ALint state;
-        alGetSourcei( m_AudioSource, AL_SOURCE_STATE, &state );
-        if( state != AL_PLAYING )  // have we fallen behind, if so reset
-            alSourcePlay( m_AudioSource );
+        if( m_AudioTrackIndex != radMovie_NoAudioTrack )
+        {
+            ALint state;
+            alGetSourcei( m_AudioSource, AL_SOURCE_STATE, &state );
+            if( state != AL_PLAYING )  // have we fallen behind, if so reset
+                alSourcePlay( m_AudioSource );
 
-        FlushAudioQueue();
+            FlushAudioQueue();
+        }
 
         //
         // The video frame has been used.  The next can be decoded
@@ -184,6 +225,9 @@ void radMoviePlayer::Load( const char * pVideoFileName, unsigned int audioTrackI
     rAssert( m_State == IRadMoviePlayer2::NoData );
     rAssert( pVideoFileName != NULL );
 
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 movie: FFmpeg Load entered file=%s audioTrack=%u", pVideoFileName, audioTrackIndex );
+#endif
     rDebugPrintf( "radMoviePlayer: Loading %s\n", pVideoFileName );
 
     m_refIRadStopwatch->Stop( );
@@ -199,10 +243,19 @@ void radMoviePlayer::Load( const char * pVideoFileName, unsigned int audioTrackI
 
     m_pFormatCtx = avformat_alloc_context();
     AV_CHK( avformat_open_input( &m_pFormatCtx, pVideoFileName, NULL, NULL ) );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 movie: avformat_open_input returned; streams=%u", m_pFormatCtx->nb_streams );
+#endif
     AV_CHK( avformat_find_stream_info( m_pFormatCtx, NULL ) );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 movie: stream info found; streams=%u", m_pFormatCtx->nb_streams );
+#endif
 
     const AVCodec* pVideoCodec = NULL;
     m_VideoTrackIndex = av_find_best_stream( m_pFormatCtx, AVMEDIA_TYPE_VIDEO, -1, -1, &pVideoCodec, 0 );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 movie: video stream index=%u codec=%p", m_VideoTrackIndex, static_cast<const void*>( pVideoCodec ) );
+#endif
     AVCodecParameters* pVideoParams = m_pFormatCtx->streams[m_VideoTrackIndex]->codecpar;
     m_pVideoCtx = avcodec_alloc_context3( pVideoCodec );
     AV_CHK( avcodec_parameters_to_context( m_pVideoCtx, pVideoParams ) );
@@ -220,30 +273,52 @@ void radMoviePlayer::Load( const char * pVideoFileName, unsigned int audioTrackI
     );
 #endif
 
+    m_AudioTrackIndex = radMovie_NoAudioTrack;
     if( audioTrackIndex != radMovie_NoAudioTrack )
     {
         const AVCodec* pAudioCodec = NULL;
-        m_AudioTrackIndex = av_find_best_stream( m_pFormatCtx, AVMEDIA_TYPE_AUDIO, audioTrackIndex + 1, -1, &pAudioCodec, 0 );
-        AVCodecParameters* pAudioParams = m_pFormatCtx->streams[m_AudioTrackIndex]->codecpar;
-        m_pAudioCtx = avcodec_alloc_context3( pAudioCodec );
-        AV_CHK( avcodec_parameters_to_context( m_pAudioCtx, pAudioParams ) );
-        AV_CHK( avcodec_open2( m_pAudioCtx, pAudioCodec, NULL ) );
+        unsigned int audioStreamOrdinal = 0;
+        for( unsigned int streamIndex = 0; streamIndex < m_pFormatCtx->nb_streams; ++streamIndex )
+        {
+            AVStream* stream = m_pFormatCtx->streams[streamIndex];
+            if( stream->codecpar->codec_type == AVMEDIA_TYPE_AUDIO )
+            {
+                if( audioStreamOrdinal == audioTrackIndex )
+                {
+                    m_AudioTrackIndex = streamIndex;
+                    pAudioCodec = avcodec_find_decoder( stream->codecpar->codec_id );
+                    break;
+                }
+                ++audioStreamOrdinal;
+            }
+        }
+        if( pAudioCodec == NULL )
+        {
+            m_AudioTrackIndex = radMovie_NoAudioTrack;
+        }
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 movie: audio stream index=%u codec=%s", m_AudioTrackIndex,
+                 pAudioCodec != NULL ? "present" : "missing" );
+#endif
+        if( m_AudioTrackIndex != radMovie_NoAudioTrack && pAudioCodec != NULL )
+        {
+            AVCodecParameters* pAudioParams = m_pFormatCtx->streams[m_AudioTrackIndex]->codecpar;
+            m_pAudioCtx = avcodec_alloc_context3( pAudioCodec );
+            AV_CHK( avcodec_parameters_to_context( m_pAudioCtx, pAudioParams ) );
+            AV_CHK( avcodec_open2( m_pAudioCtx, pAudioCodec, NULL ) );
 
-        AVChannelLayout layout = { AV_CHANNEL_ORDER_NATIVE, 2, AV_CH_LAYOUT_STEREO };
-        AV_CHK( swr_alloc_set_opts2( &m_pSwrCtx,
-            &layout,
-            AV_SAMPLE_FMT_S16,
-            pAudioParams->sample_rate,
-            &pAudioParams->ch_layout,
-            (AVSampleFormat)pAudioParams->format,
-            pAudioParams->sample_rate,
-            0,
-            NULL ) );
-        swr_init( m_pSwrCtx );
-    }
-    else
-    {
-        m_AudioTrackIndex = 0;
+            AVChannelLayout layout = { AV_CHANNEL_ORDER_NATIVE, 2, AV_CH_LAYOUT_STEREO };
+            AV_CHK( swr_alloc_set_opts2( &m_pSwrCtx,
+                &layout,
+                AV_SAMPLE_FMT_S16,
+                pAudioParams->sample_rate,
+                &pAudioParams->ch_layout,
+                (AVSampleFormat)pAudioParams->format,
+                pAudioParams->sample_rate,
+                0,
+                NULL ) );
+            swr_init( m_pSwrCtx );
+        }
     }
 
     m_pPacket = av_packet_alloc();
@@ -273,6 +348,9 @@ void radMoviePlayer::Load( const char * pVideoFileName, unsigned int audioTrackI
     // The buffered data source's input must be set before the stream player's
 
     SetState( IRadMoviePlayer2::ReadyToPlay );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 movie: FFmpeg Load completed; state=ReadyToPlay" );
+#endif
 
     Service( );
 }
@@ -285,6 +363,9 @@ void radMoviePlayer::Unload( void )
 {
     if( m_State != IRadMoviePlayer2::NoData )
     {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 movie: FFmpeg Unload entered" );
+#endif
         alSourceStop( m_AudioSource );
         FlushAudioQueue();
         alDeleteSources( 1, &m_AudioSource );
@@ -307,6 +388,9 @@ void radMoviePlayer::Unload( void )
         m_VideoFrameState = VideoFrame_Unlocked;
 
         SetState( IRadMoviePlayer2::NoData );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 movie: FFmpeg Unload completed" );
+#endif
     }
 }
 
@@ -318,8 +402,14 @@ void radMoviePlayer::Play( void )
 {
     if( m_State == IRadMoviePlayer2::ReadyToPlay )
     {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 movie: decoder Play setting state to Playing" );
+#endif
         SetState( IRadMoviePlayer2::Playing );
         InternalPlay( );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 movie: decoder InternalPlay returned" );
+#endif
     }
     else if( m_State == IRadMoviePlayer2::Loading )
     {
@@ -435,6 +525,14 @@ unsigned int radMoviePlayer::GetCurrentFrameNumber( void )
 
 void radMoviePlayer::Service( void )
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    static bool loggedFirstService = false;
+    if( !loggedFirstService )
+    {
+        SDL_Log( "SRR2 movie: decoder Service entered state=%d", m_State );
+        loggedFirstService = true;
+    }
+#endif
     //
     // Start off by letting the decoder figure out where it is
     //
@@ -451,6 +549,14 @@ void radMoviePlayer::Service( void )
     }
     else if( m_State == IRadMoviePlayer2::Playing )
     {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        static bool loggedFirstPlayingService = false;
+        if( !loggedFirstPlayingService )
+        {
+            SDL_Log( "SRR2 movie: first playing Service iteration" );
+            loggedFirstPlayingService = true;
+        }
+#endif
         //
         // If the video frame is unlocked, we can issue the next decode request.
         //
@@ -461,28 +567,83 @@ void radMoviePlayer::Service( void )
             // Keep an eye on the states of things to detect the end of the movie
             //
 
-            if( av_read_frame( m_pFormatCtx, m_pPacket ) >= 0 )
+            int readResult = av_read_frame( m_pFormatCtx, m_pPacket );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+            static bool loggedFirstPacketRead = false;
+            if( !loggedFirstPacketRead )
+            {
+                SDL_Log( "SRR2 movie: first av_read_frame result=%d", readResult );
+                if( readResult >= 0 )
+                {
+                    SDL_Log( "SRR2 movie: first packet stream=%d size=%d", m_pPacket->stream_index, m_pPacket->size );
+                }
+                loggedFirstPacketRead = true;
+            }
+#endif
+            if( readResult >= 0 )
             {
                 if( m_pPacket->stream_index == m_VideoTrackIndex )
                 {
-                    AV_CHK( avcodec_send_packet( m_pVideoCtx, m_pPacket ) );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+                    static bool loggedFirstVideoPacketSend = false;
+                    static bool loggedFirstVideoPacketSendResult = false;
+                    if( !loggedFirstVideoPacketSend )
+                    {
+                        SDL_Log( "SRR2 movie: sending first video packet to decoder" );
+                        loggedFirstVideoPacketSend = true;
+                    }
+#endif
+                    int sendResult = avcodec_send_packet( m_pVideoCtx, m_pPacket );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+                    if( !loggedFirstVideoPacketSendResult )
+                    {
+                        SDL_Log( "SRR2 movie: first video packet send returned %d", sendResult );
+                        loggedFirstVideoPacketSendResult = true;
+                    }
+#endif
+                    AV_CHK( sendResult );
 
                     //
                     // Decompress all pending video frames
                     //
 
+                    static bool loggedFirstDecodedFrame = false;
                     while( avcodec_receive_frame( m_pVideoCtx, m_pVideoFrame ) >= 0 )
                     {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+                        if( !loggedFirstDecodedFrame )
+                        {
+                            SDL_Log( "SRR2 movie: first decoded frame %dx%d format=%d",
+                                     m_pVideoFrame->width, m_pVideoFrame->height, m_pVideoFrame->format );
+                            loggedFirstDecodedFrame = true;
+                        }
+#endif
                         // Reset the list of render destinations
 
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+                        static bool loggedFirstDestinationReset = false;
+                        if( !loggedFirstDestinationReset )
+                        {
+                            SDL_Log( "SRR2 movie: resetting first movie render destination" );
+                            loggedFirstDestinationReset = true;
+                        }
+#endif
                         m_refIRadMovieRenderStrategy->ResetDestinations();
 
                         // Now go through the list destinations until we've filled 
                         // them all up with the freshly decoded data
 
                         IRadMovieRenderStrategy::LockedDestination dest;
-
-                        while( m_refIRadMovieRenderStrategy->LockNextDestination( &dest ) > 0 )
+                        unsigned int destinationResult = m_refIRadMovieRenderStrategy->LockNextDestination( &dest );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+                        static bool loggedFirstDestinationLock = false;
+                        if( !loggedFirstDestinationLock )
+                        {
+                            SDL_Log( "SRR2 movie: first destination lock result=%u", destinationResult );
+                            loggedFirstDestinationLock = true;
+                        }
+#endif
+                        while( destinationResult > 0 )
                         {
                             uint8_t* pDest = (uint8_t*)dest.m_pDest;
 
@@ -496,23 +657,52 @@ void radMoviePlayer::Service( void )
 
                             // If one of these copies fail, we'll have to skip this frame
                             // and not iterate the loop
-                            if( sws_scale( m_pSwsCtx,
+                            int scaledRows = sws_scale( m_pSwsCtx,
                                 m_pVideoFrame->data, m_pVideoFrame->linesize,
                                 dest.m_SrcPosY, m_pVideoFrame->height - dest.m_SrcPosY,
-                                &pDest, &dest.m_DestPitch ) >= 0 )
+                                &pDest, &dest.m_DestPitch );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+                            static bool loggedFirstScale = false;
+                            if( !loggedFirstScale )
+                            {
+                                SDL_Log( "SRR2 movie: first sws_scale returned %d rows", scaledRows );
+                                loggedFirstScale = true;
+                            }
+#endif
+                            if( scaledRows >= 0 )
 #endif
                             {
                                 AVRational rational = m_pFormatCtx->streams[0]->time_base;
                                 m_PresentationTime = (m_pVideoFrame->pts * rational.num * 1000) / rational.den;
                                 m_PresentationDuration = (m_pVideoFrame->duration * rational.num * 1000) / rational.den;
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+                                static bool loggedFirstFrameTiming = false;
+                                if( !loggedFirstFrameTiming )
+                                {
+                                    SDL_Log( "SRR2 movie: first frame timing pts=%u duration=%u time_base=%d/%d",
+                                             m_PresentationTime, m_PresentationDuration,
+                                             rational.num, rational.den );
+                                    loggedFirstFrameTiming = true;
+                                }
+#endif
                                 m_VideoFrameState = VideoFrame_Locked;
                             }
 
                             m_refIRadMovieRenderStrategy->UnlockDestination();
+                            destinationResult = m_refIRadMovieRenderStrategy->LockNextDestination( &dest );
                         }
                     }
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+                    static bool loggedFirstVideoPacketDecodeLoop = false;
+                    if( !loggedFirstVideoPacketDecodeLoop )
+                    {
+                        SDL_Log( "SRR2 movie: first video packet decode loop completed" );
+                        loggedFirstVideoPacketDecodeLoop = true;
+                    }
+#endif
                 }
-                else if( m_AudioTrackIndex > 0 && m_pPacket->stream_index == m_AudioTrackIndex )
+                else if( m_AudioTrackIndex != radMovie_NoAudioTrack &&
+                         m_pPacket->stream_index == m_AudioTrackIndex )
                 {
                     AV_CHK( avcodec_send_packet( m_pAudioCtx, m_pPacket ) );
 
@@ -574,6 +764,15 @@ void radMoviePlayer::Service( void )
                 if( currentTime > m_PresentationTime &&
                     currentTime <= m_PresentationTime + m_PresentationDuration + RAD_MOVIE_PLAYER_VIDEO_LAG )
                 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+                    static bool loggedFirstIterate = false;
+                    if( !loggedFirstIterate )
+                    {
+                        SDL_Log( "SRR2 movie: presenting first frame at %u ms (pts=%u duration=%u)",
+                                 currentTime, m_PresentationTime, m_PresentationDuration );
+                        loggedFirstIterate = true;
+                    }
+#endif
                     m_refIRadMovieRenderLoop->IterateLoop( this );
                 }
                 else if( currentTime > m_PresentationTime + m_PresentationDuration )
@@ -582,10 +781,13 @@ void radMoviePlayer::Service( void )
                     rTunePrintf( "current time[ %d ] expected presentation time[ %d ~ %d ]\n",
                         currentTime, m_PresentationTime, m_PresentationTime + m_PresentationDuration );
 
-                    ALint state;
-                    alGetSourcei( m_AudioSource, AL_SOURCE_STATE, &state );
-                    if( state != AL_STOPPED )  // allow audio to re-sync
-                        alSourceStop( m_AudioSource );
+                    if( m_AudioTrackIndex != radMovie_NoAudioTrack )
+                    {
+                        ALint state;
+                        alGetSourcei( m_AudioSource, AL_SOURCE_STATE, &state );
+                        if( state != AL_STOPPED )  // allow audio to re-sync
+                            alSourceStop( m_AudioSource );
+                    }
 
                     //
                     // Not rendering will save us up to a vsync period this round.
@@ -618,8 +820,17 @@ void radMoviePlayer::SetState( IRadMoviePlayer2::State state )
 
 void radMoviePlayer::InternalPlay( void )
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 movie: InternalPlay starting stopwatch" );
+#endif
     m_refIRadStopwatch->Start( );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 movie: InternalPlay calling Service" );
+#endif
     Service( );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 movie: InternalPlay Service returned" );
+#endif
 }
 
 //=============================================================================

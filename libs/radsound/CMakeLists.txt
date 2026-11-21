@@ -48,9 +48,9 @@ target_include_directories(radsound
 	PUBLIC "inc/"
 	PRIVATE "src/pch/"
 	PRIVATE "src/common/"
-	PRIVATE ${OPENAL_INCLUDE_DIR}
+	PRIVATE ${SRR2_OPENAL_INCLUDE_DIR}
 )
 target_link_libraries(radsound
-	${OPENAL_LIBRARY}
+	${SRR2_OPENAL_TARGET}
 	radcore
 )

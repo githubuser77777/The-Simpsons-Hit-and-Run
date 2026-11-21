@@ -15,6 +15,9 @@
 // Foundation Tech
 #include <raddebug.hpp>
 #include <raddebugwatch.hpp>
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+#include <SDL.h>
+#endif
 
 //========================================
 // Project Includes
@@ -284,6 +287,15 @@ void MissionManager::Finalize()
 //=============================================================================
 void MissionManager::Update( int elapsedTime )
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    static int lastLoggedLoadingState = -1;
+    if( lastLoggedLoadingState != mLoadingState )
+    {
+        SDL_Log( "SRR2 mission load: Update loading state=%d mission state=%d",
+                 mLoadingState, mMissionState );
+        lastLoggedLoadingState = mLoadingState;
+    }
+#endif
 #ifdef DEBUGWATCH
     if ( gResetCurrentMission )
     {
@@ -482,6 +494,14 @@ void MissionManager::HandleEvent( EventEnum id, void* pEventData )
 //=============================================================================
 void MissionManager::PerformLoading()
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    static int lastLoggedPerformState = -1;
+    if( lastLoggedPerformState != mLoadingState )
+    {
+        SDL_Log( "SRR2 mission load: PerformLoading state=%d", mLoadingState );
+        lastLoggedPerformState = mLoadingState;
+    }
+#endif
 MEMTRACK_PUSH_GROUP( "MissionManager - Loading" );  
     switch( mLoadingState )
     {
@@ -894,6 +914,9 @@ void MissionManager::LoadLevelData()
         sprintf( name, "scripts\\missions\\level0%d\\demo.mfk", GetCurrentLevelIndex() + 1 );
     }
 
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 mission load: queueing level script %s", name );
+#endif
     GetPersistentWorldManager()->OnLevelLoad( GetCurrentLevelIndex() );
     BillboardWrappedLoader::OverrideLoader( true );
     HeapMgr()->PushHeap( GMA_LEVEL_OTHER );  // I choose other because this stuff will exist longer than a single mission
@@ -901,6 +924,9 @@ void MissionManager::LoadLevelData()
     GetMissionScriptLoader()->LoadScriptAsync( name );
     HeapMgr()->PopHeap(GMA_LEVEL_OTHER);
     BillboardWrappedLoader::OverrideLoader( false );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 mission load: level script request returned" );
+#endif
 }
 
 //=============================================================================
@@ -955,6 +981,9 @@ void MissionManager::InitLevelData()
 //=============================================================================
 void MissionManager::OnProcessRequestsComplete( void* pUserData )
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 mission load: request callback state=%d", mLoadingState );
+#endif
     switch( mLoadingState )
     {
     case STATE_MISSION_LOADING:
@@ -976,7 +1005,9 @@ void MissionManager::OnProcessRequestsComplete( void* pUserData )
         rAssert( false );
     }
     GetRenderManager()->pWorldRenderLayer()->DoPostDynaLoad();
-
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 mission load: request callback completed; state=%d", mLoadingState );
+#endif
 }
 
 //=============================================================================

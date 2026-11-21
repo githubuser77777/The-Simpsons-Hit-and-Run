@@ -45,6 +45,9 @@
 #include <p3d/unicode.hpp>
 #include <raddebug.hpp>     // Foundation
 #include <raddebugwatch.hpp>
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+#include <SDL.h>
+#endif
 #include <Page.h>
 #include <Polygon.h>
 #include <ResourceManager.h>
@@ -207,7 +210,7 @@ unsigned int g_scroobySimulationTime = 0;
 
 #define PROJECT_DRIVE_SPEC "APP0:\\"
 
-#elif defined __SWITCH__
+#elif defined __SWITCH__ && !defined(SRR2_USE_PC_ASSETS)
 
 #define PROJECT_DRIVE_SPEC "ROMFS:\\"
 
@@ -797,6 +800,11 @@ void CGuiSystem::HandleMessage
 //===========================================================================
 void CGuiSystem::OnProjectLoadComplete( Scrooby::Project* pProject )
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 GUI: OnProjectLoadComplete entered state=%d project=%s textBible=%s",
+             m_state, pProject != NULL ? "present" : "null",
+             m_pTextBible != NULL ? "present" : "null" );
+#endif
 MEMTRACK_PUSH_GROUP( "CGUISystem" );
 	rAssert( pProject != NULL );
     m_pProject = pProject;
@@ -804,7 +812,13 @@ MEMTRACK_PUSH_GROUP( "CGUISystem" );
     // update reference to text bible
     //
     rAssert( m_pTextBible != NULL );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 GUI: setting current text bible" );
+#endif
     m_pTextBible->SetTextBible( TEXT_BIBLE_NAME );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 GUI: current text bible set" );
+#endif
 
     switch( m_state )
     {
@@ -949,6 +963,9 @@ MEMTRACK_PUSH_GROUP( "CGUISystem" );
         }
         case INGAME_LOADING:
         {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+            SDL_Log( "SRR2 GUI: handling INGAME_LOADING project" );
+#endif
             HeapMgr()->PushHeap( GMA_LEVEL_HUD );
 
 			// Create InGame manager
@@ -957,26 +974,47 @@ MEMTRACK_PUSH_GROUP( "CGUISystem" );
             if( m_pLevelProject == NULL )
             {
                 m_pLevelProject = m_pProject;
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+                SDL_Log( "SRR2 GUI: stored level-specific project" );
+#endif
             }
             else
 #endif // LOAD_LEVEL_SPECIFIC_PROJECT
             {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+                SDL_Log( "SRR2 GUI: creating in-game GUI manager" );
+#endif
 			    m_pManagerInGame = new CGuiManagerInGame( m_pProject, this );
 			    rAssert( m_pManagerInGame );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+                SDL_Log( "SRR2 GUI: in-game GUI manager created; populating screens" );
+#endif
 
 			    // Populate screens	
 			    //
 			    m_pManagerInGame->Populate();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+                SDL_Log( "SRR2 GUI: in-game GUI manager population returned" );
+#endif
 
                 // notify callback
                 //
                 if( m_pLoadingCallback != NULL )
                 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+                    SDL_Log( "SRR2 GUI: notifying in-game GUI load completion" );
+#endif
                     m_pLoadingCallback->OnGuiLoadComplete( IGuiLoadingCallback::GUI_LOADED_IN_GAME );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+                    SDL_Log( "SRR2 GUI: in-game GUI load callback returned" );
+#endif
                 }
             }
 
             HeapMgr()->PopHeap( GMA_LEVEL_HUD );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+            SDL_Log( "SRR2 GUI: INGAME_LOADING project handling completed" );
+#endif
 
             break;
         }
@@ -988,6 +1026,9 @@ MEMTRACK_PUSH_GROUP( "CGUISystem" );
         }
     }
 MEMTRACK_POP_GROUP("CGUISystem");
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 GUI: OnProjectLoadComplete returned" );
+#endif
 }
 
 //===========================================================================

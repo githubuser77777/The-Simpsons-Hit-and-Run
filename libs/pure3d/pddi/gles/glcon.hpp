@@ -126,6 +126,7 @@ protected:
 //   float alphaRef;
 
     int maxTexSize;
+    int m_SwapInterval;
     pddiMatrix projection;
 };
 

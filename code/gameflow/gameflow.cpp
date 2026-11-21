@@ -15,6 +15,9 @@
 //========================================
 #include <raddebug.hpp>
 #include <radtime.hpp>
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+#include <SDL.h>
+#endif
 
 //========================================
 // Project Includes
@@ -263,8 +266,18 @@ void GameFlow::OnTimerDone( unsigned int elapsedtime, void* pUserData )
     // If current and next contexts are different...
     if( mCurrentContext != mNextContext )
     {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 context: transition %d -> %d stopping current context",
+                 mCurrentContext, mNextContext );
+#endif
         mpContexts[mCurrentContext]->Stop( mNextContext );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 context: current context stopped; starting %d", mNextContext );
+#endif
         mpContexts[mNextContext]->Start( mCurrentContext );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        SDL_Log( "SRR2 context: context %d start returned", mNextContext );
+#endif
         
         mCurrentContext = mNextContext;
     }

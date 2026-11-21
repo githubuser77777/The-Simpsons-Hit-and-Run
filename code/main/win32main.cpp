@@ -23,6 +23,7 @@
 
 #ifdef __SWITCH__
 #include <switch.h>
+#include <unistd.h>
 #endif
 
 #ifdef RAD_VITA
@@ -49,6 +50,19 @@ static void ProcessCommandLineArguments( int argc, char *argv[] );
 
 static void ProcessCommandLineArgumentsFromFile();
 
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+static FILE* gStartupLog = NULL;
+
+static void LogStartup( const char* stage, const char* detail = NULL )
+{
+    if( gStartupLog != NULL )
+    {
+        fprintf( gStartupLog, "%s%s%s\n", stage, detail != NULL ? ": " : "", detail != NULL ? detail : "" );
+        fflush( gStartupLog );
+    }
+}
+#endif
+
 static void LogOutputFunction( void *userdata, int category, SDL_LogPriority priority, const char *message )
 {
 #ifdef RAD_VITA
@@ -56,6 +70,9 @@ static void LogOutputFunction( void *userdata, int category, SDL_LogPriority pri
 #else
     printf( "%s\n", message );
     fflush( stdout );
+#endif
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    LogStartup( "SDL", message );
 #endif
 }
 
@@ -72,12 +89,43 @@ static void LogOutputFunction( void *userdata, int category, SDL_LogPriority pri
 //=============================================================================
 extern "C" int main( int argc, char *argv[] )
 {
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    gStartupLog = fopen( "sdmc:/switch/simpsons/srr2-startup.log", "w" );
+    if( gStartupLog == NULL )
+    {
+        gStartupLog = fopen( "srr2-startup.log", "w" );
+    }
+    LogStartup( "main entered" );
+#endif
 #ifdef __SWITCH__
 #ifdef RAD_DEBUG
     socketInitializeDefault();
     nxlinkStdio();
 #endif
+#ifdef SRR2_USE_PC_ASSETS
+    if( chdir( "sdmc:/switch/simpsons" ) != 0 )
+    {
+        fprintf( stderr, "Unable to set game asset directory to sdmc:/switch/simpsons\n" );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        LogStartup( "failed to change to game asset directory" );
+        if( gStartupLog != NULL )
+        {
+            fclose( gStartupLog );
+            gStartupLog = NULL;
+        }
+#endif
+        return 1;
+    }
+#else
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    Result romfsResult = romfsInit();
+    char romfsResultText[32];
+    snprintf( romfsResultText, sizeof( romfsResultText ), "0x%08lx", (unsigned long)romfsResult );
+    LogStartup( "romfsInit returned", romfsResultText );
+#else
     romfsInit();
+#endif
+#endif
 #endif
 #ifdef RAD_VITA
 	chdir( "ux0:data/simpsons" );
@@ -94,25 +142,73 @@ extern "C" int main( int argc, char *argv[] )
     // Initialize SDL subsystems
     //
 #if SDL_MAJOR_VERSION < 3
-    SDL_Init( SDL_INIT_EVENTS | SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER );
+    int sdlInitResult = SDL_Init( SDL_INIT_EVENTS | SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER );
 
     SDL_LogSetOutputFunction( LogOutputFunction, NULL );
 #else
-    SDL_Init( SDL_INIT_EVENTS | SDL_INIT_VIDEO | SDL_INIT_GAMEPAD );
+    int sdlInitResult = SDL_Init( SDL_INIT_EVENTS | SDL_INIT_VIDEO | SDL_INIT_GAMEPAD );
 
     SDL_SetLogOutputFunction( LogOutputFunction, NULL );
 #endif
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    LogStartup( "SDL_Init returned", sdlInitResult == 0 ? "success" : SDL_GetError() );
+#endif
+    if( sdlInitResult != 0 )
+    {
+        fprintf( stderr, "SDL_Init failed: %s\n", SDL_GetError() );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        if( gStartupLog != NULL )
+        {
+            fclose( gStartupLog );
+            gStartupLog = NULL;
+        }
+#endif
+        return 1;
+    }
 
     //
     // Have to get FTech setup first so that we can use all the memory services.
     // The initialize window call will fail if another Simpsons window exists. In
     // this case, we exit.
     //
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    LogStartup( "creating window" );
+#endif
+    SDL_ClearError();
     if( !Win32Platform::InitializeWindow() )
     {
+        const char* windowError = SDL_GetError();
+        if( windowError != NULL && windowError[0] != '\0' )
+        {
+            fprintf( stderr, "Window initialization failed: %s\n", windowError );
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+            LogStartup( "window initialization failed", windowError );
+            if( gStartupLog != NULL )
+            {
+                fclose( gStartupLog );
+                gStartupLog = NULL;
+            }
+#endif
+            SDL_Quit();
+            return 1;
+        }
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+        LogStartup( "window initialization returned false" );
+        if( gStartupLog != NULL )
+        {
+            fclose( gStartupLog );
+            gStartupLog = NULL;
+        }
+#endif
         return 0;
     }
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    LogStartup( "window created" );
+#endif
     Win32Platform::InitializeFoundation();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    LogStartup( "foundation initialized" );
+#endif
 
     srand (Game::GetRandomSeed ());
 
@@ -149,14 +245,27 @@ extern "C" int main( int argc, char *argv[] )
     //
     // Initialize the game.
     //
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    LogStartup( "game initialization started" );
+#endif
     pGame->Initialize();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    LogStartup( "game initialization completed" );
+#endif
 
     HeapMgr()->PopHeap (GMA_PERSISTENT);
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    LogStartup( "persistent heap popped" );
+    LogStartup( "entering game loop" );
+#endif
 
     //
     // Run it!  Control will not return from here until the game is stopped.
     //
     pGame->Run();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    LogStartup( "game loop returned" );
+#endif
 
     //
     // Terminate the game (this frees all resources allocated by the game).
@@ -197,6 +306,14 @@ extern "C" int main( int argc, char *argv[] )
     // Shutdown SDL subsystems
     //
     SDL_Quit();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    LogStartup( "normal shutdown" );
+    if( gStartupLog != NULL )
+    {
+        fclose( gStartupLog );
+        gStartupLog = NULL;
+    }
+#endif
 
     //
     // Pass any error codes back to the operating system.

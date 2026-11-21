@@ -321,7 +321,7 @@ bool Win32Platform::InitializeWindow()
     SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 2 );
     SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 1 );
 #endif
-#ifdef __SWITCH__
+#if defined(__SWITCH__) && !defined(__SWITCH2__)
     SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 32 );
 #else
     SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 24 );
@@ -344,7 +344,11 @@ bool Win32Platform::InitializeWindow()
     mWnd = SDL_CreateWindow( ApplicationName, w, h, flags );
 #endif
 
-    rAssert(mWnd != NULL);
+    if( mWnd == NULL )
+    {
+        SDL_Log( "SDL_CreateWindow failed: %s", SDL_GetError() );
+        return false;
+    }
 
 #if defined( PRINT_WINMESSAGES ) && defined( RAD_DEBUG )
     SDL_SetHint( SDL_HINT_EVENT_LOGGING, "1" );
@@ -359,6 +363,9 @@ bool Win32Platform::InitializeWindow()
 
     SDL_DisableScreenSaver();
 
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 startup: window initialization completed" );
+#endif
     return true;
 }
 
@@ -537,7 +544,13 @@ void Win32Platform::InitializePlatform()
     //
     // Rendering is good.
     //
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 startup: Pure3D initialization started" );
+#endif
     InitializePure3D();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 startup: Pure3D initialization completed" );
+#endif
 
     //
     // Add anything here that needs to be before the drive is opened.
@@ -1345,7 +1358,13 @@ MEMTRACK_PUSH_GROUP( "Win32Platform" );
     //
     // Initialize the d3d context.
     //
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 startup: creating Pure3D context" );
+#endif
     InitializeContext();
+#ifdef SRR2_STARTUP_DIAGNOSTICS
+    SDL_Log( "SRR2 startup: Pure3D context created" );
+#endif
 
     //
     // This call installs chunk handlers for all the primary chunk types that
